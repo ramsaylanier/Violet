@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -8,12 +8,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { listProjects } from "@/api/projects";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { listProjects, deleteProject } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Github, Flame } from "lucide-react";
+import { Plus, Github, Flame, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 export function ProjectList() {
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const {
     data: projects = [],
@@ -24,6 +38,23 @@ export function ProjectList() {
     queryFn: listProjects,
     enabled: isAuthenticated,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (projectId: string) => deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setDeletingId(null);
+    },
+    onError: (error) => {
+      console.error("Failed to delete project:", error);
+      setDeletingId(null);
+    },
+  });
+
+  const handleDelete = (projectId: string, projectName: string) => {
+    setDeletingId(projectId);
+    deleteMutation.mutate(projectId);
+  };
 
   if (isLoading) {
     return (
@@ -49,7 +80,7 @@ export function ProjectList() {
         <p className="text-muted-foreground">
           No projects yet. Create your first project to get started.
         </p>
-        <Link to="/">
+        <Link to="/projects/new">
           <Button>
             <Plus className="w-4 h-4 mr-2" />
             Create Project with AI
@@ -62,12 +93,15 @@ export function ProjectList() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {projects.map((project) => (
-        <Link
+        <Card
           key={project.id}
-          to="/projects/$projectId"
-          params={{ projectId: project.id }}
+          className="hover:shadow-lg transition-shadow h-full flex flex-col"
         >
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: project.id }}
+            className="flex-1 cursor-pointer"
+          >
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{project.name}</span>
@@ -99,8 +133,45 @@ export function ProjectList() {
                 )}
               </div>
             </CardContent>
-          </Card>
-        </Link>
+          </Link>
+          <div className="px-6 pb-4 border-t">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete
+                    the project "{project.name}" and all of its data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deletingId === project.id}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDelete(project.id, project.name)}
+                    disabled={deletingId === project.id}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deletingId === project.id
+                      ? "Deleting..."
+                      : "Delete Project"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </Card>
       ))}
     </div>
   );
