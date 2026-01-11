@@ -1,7 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 
-import globalCss from "@/app/globals.css?url";
-import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
@@ -23,7 +21,6 @@ function RootComponent() {
               name: "Tanstack Router",
               render: <TanStackRouterDevtoolsPanel />,
             },
-            TanStackQueryDevtools,
           ]}
         />
       )}

@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import Header from "@/components/Header";
 
 export const Route = createFileRoute("/_app")({
   component: Index,
@@ -26,6 +27,7 @@ function Index() {
 
   return (
     <div className="space-y-8">
+      <Header />
       <Outlet />
     </div>
   );

@@ -2,13 +2,14 @@ import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
 import { devtools } from "@tanstack/devtools-vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+      "/api": {
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
     },
@@ -16,6 +17,10 @@ export default defineConfig({
   plugins: [
     tsConfigPaths({
       projects: ["./tsconfig.json"],
+    }),
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
     }),
     viteReact(),
     devtools(),

@@ -8,6 +8,8 @@ if (!admin.apps.length) {
   // For production, use service account
   const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
 
+  console.log("🔥 isEmulator", isEmulator);
+
   if (isEmulator) {
     // Ensure emulator host format is correct (no http:// prefix)
     const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST?.replace(
