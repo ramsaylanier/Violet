@@ -1,90 +1,96 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAuth } from '@/hooks/useAuth'
+import { useState } from "react";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 
-export function LoginForm() {
-  const { login, signup } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isSignup, setIsSignup] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+interface LoginFormProps {
+  redirect?: string;
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+export function LoginForm({ redirect }: LoginFormProps) {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
     try {
-      if (isSignup) {
-        await signup(email, password)
-      } else {
-        await login(email, password)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
-    } finally {
-      setLoading(false)
+      // Authenticate with Firebase client SDK
+      await login({ email, password });
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(
+        err?.message || err?.code || "Authentication failed. Please try again."
+      );
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>{isSignup ? 'Create Account' : 'Sign In'}</CardTitle>
-        <CardDescription>
-          {isSignup
-            ? 'Create an account to start managing your projects'
-            : 'Sign in to your account to continue'}
-        </CardDescription>
+        <CardTitle>Sign In</CardTitle>
+        <CardDescription>Sign in to your account to continue</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit(e);
+          }}
+          className="space-y-4"
+        >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
-              disabled={loading}
+              placeholder="you@example.com"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
-              disabled={loading}
               minLength={6}
+              placeholder="Enter your password"
             />
           </div>
-          {error && (
-            <div className="text-sm text-destructive">{error}</div>
-          )}
+          {error && <div className="text-sm text-destructive">{error}</div>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
           <div className="text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-primary hover:underline"
-            >
-              {isSignup
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
-            </button>
+            <Link to="/signup" className="text-primary hover:underline">
+              Don't have an account? Sign up
+            </Link>
           </div>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

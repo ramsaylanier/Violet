@@ -1,77 +1,111 @@
-import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  onAuthStateChanged,
-  User as FirebaseUser,
+  getCurrentUser,
+  createSession,
+  logout as logoutFn,
+} from "@/server/auth";
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getCurrentUser } from "@/server/auth";
 import type { User } from "@/types";
 
 export function useAuth() {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setFirebaseUser(firebaseUser);
+  // Query for the current user
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => getCurrentUser(),
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+  });
 
-      if (firebaseUser) {
-        try {
-          // TanStack Start server functions automatically handle authentication
-          // We need to set the auth token in a way the server can access it
-          // For now, we'll fetch the user profile directly
-          const idToken = await firebaseUser.getIdToken();
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) => {
+      // Authenticate with Firebase client SDK
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const idToken = await userCredential.user.getIdToken();
 
-          // Call server function - TanStack Start will handle the request
-          const userData = await getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error("Failed to fetch user data:", error);
-          // Try to create user profile if it doesn't exist
-          try {
-            const email = firebaseUser.email || "";
-            const name = firebaseUser.displayName || undefined;
-            // We'll handle user creation on the backend when auth token is verified
-            setUser({
-              id: firebaseUser.uid,
-              email,
-              name,
-              createdAt: new Date(),
-            });
-          } catch (createError) {
-            console.error("Failed to create user profile:", createError);
-            setUser(null);
-          }
-        }
-      } else {
-        setUser(null);
-      }
-    });
+      // Create session cookie on server
+      // @ts-ignore - Type definitions for server functions with data are not perfect
+      return await createSession({ data: { idToken } });
+    },
+    onSuccess: () => {
+      // Invalidate and refetch user query
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    },
+  });
 
-    return unsubscribe;
-  }, []);
+  // Signup mutation
+  const signupMutation = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) => {
+      // Create user with Firebase client SDK
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const idToken = await userCredential.user.getIdToken();
 
-  const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-  };
+      // Create session cookie on server
+      // @ts-ignore - Type definitions for server functions with data are not perfect
+      return await createSession({ data: { idToken } });
+    },
+    onSuccess: () => {
+      // Invalidate and refetch user query
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    },
+  });
 
-  const signup = async (email: string, password: string) => {
-    await createUserWithEmailAndPassword(auth, email, password);
-  };
-
-  const logout = async () => {
-    await signOut(auth);
-  };
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      // Sign out from Firebase client SDK
+      await signOut(auth);
+      // Clear session cookie on server
+      return await logoutFn();
+    },
+    onSuccess: () => {
+      // Clear user query and reset cache
+      queryClient.setQueryData(["currentUser"], null);
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    },
+  });
 
   return {
-    user,
-    firebaseUser,
-    login,
-    signup,
-    logout,
-    isAuthenticated: !!firebaseUser,
+    user: user ?? null,
+    isLoading,
+    isAuthenticated: !!user,
+    error,
+    login: loginMutation.mutateAsync,
+    signup: signupMutation.mutateAsync,
+    logout: logoutMutation.mutateAsync,
+    isLoggingIn: loginMutation.isPending,
+    isSigningUp: signupMutation.isPending,
+    isLoggingOut: logoutMutation.isPending,
   };
 }

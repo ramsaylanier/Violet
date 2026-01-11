@@ -8,25 +8,18 @@ import type { Project } from '@/types'
 import { Plus, Github, Flame } from 'lucide-react'
 
 export function ProjectList() {
-  const { firebaseUser } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadProjects = async () => {
-    if (!firebaseUser) {
+    if (!isAuthenticated) {
       setLoading(false)
       return
     }
 
     try {
-      const idToken = await firebaseUser.getIdToken()
-      const data = await listProjects({
-        request: new Request('http://localhost', {
-          headers: {
-            authorization: `Bearer ${idToken}`,
-          },
-        }),
-      })
+      const data = await listProjects()
       setProjects(data)
     } catch (error) {
       console.error('Failed to load projects:', error)
@@ -37,7 +30,7 @@ export function ProjectList() {
 
   useEffect(() => {
     loadProjects()
-  }, [firebaseUser])
+  }, [isAuthenticated])
 
   if (loading) {
     return (

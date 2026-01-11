@@ -1,24 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/useAuth";
-import { LoginForm } from "@/components/LoginForm";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ProjectList } from "@/components/ProjectList";
 
-export const Route = createFileRoute("/_layout")({
+export const Route = createFileRoute("/_app/")({
   component: Index,
 });
 
 function Index() {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoginForm />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="text-center space-y-4">

@@ -1,5 +1,4 @@
-import { createServerFn } from "@tanstack/start-client-core";
-import { verifyIdToken, getUserProfile } from "@/services/authService";
+import { createServerFn } from "@tanstack/react-start";
 import {
   createRepository,
   listRepositories,
@@ -9,19 +8,14 @@ import {
   listBranches,
   createPullRequest,
 } from "@/services/githubService";
+import { requireAuth } from "@/server/auth";
+import { getUserProfile } from "@/services/authService";
 import type { GitHubRepository, GitHubIssue } from "@/types";
 
 export const createGitHubRepository = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
@@ -32,7 +26,7 @@ export const createGitHubRepository = createServerFn({
     name,
     description,
     private: isPrivate,
-  } = ctx.data as any as {
+  } = (ctx.data as any) as {
     name: string;
     description?: string;
     private?: boolean;
@@ -42,15 +36,8 @@ export const createGitHubRepository = createServerFn({
 
 export const listGitHubRepositories = createServerFn({
   method: "GET",
-}).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+}).handler(async () => {
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
@@ -63,21 +50,14 @@ export const listGitHubRepositories = createServerFn({
 export const createGitHubIssue = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
     throw new Error("GitHub token not configured");
   }
 
-  const { owner, repo, title, body, labels } = ctx.data as any as {
+  const { owner, repo, title, body, labels } = (ctx.data as any) as {
     owner: string;
     repo: string;
     title: string;
@@ -90,21 +70,14 @@ export const createGitHubIssue = createServerFn({
 export const listGitHubIssues = createServerFn({
   method: "GET",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
     throw new Error("GitHub token not configured");
   }
 
-  const { owner, repo, state } = ctx.data as any as {
+  const { owner, repo, state } = (ctx.data as any) as {
     owner: string;
     repo: string;
     state?: "open" | "closed" | "all";
@@ -115,63 +88,42 @@ export const listGitHubIssues = createServerFn({
 export const listGitHubWorkflows = createServerFn({
   method: "GET",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
     throw new Error("GitHub token not configured");
   }
 
-  const { owner, repo } = ctx.data as any as { owner: string; repo: string };
+  const { owner, repo } = (ctx.data as any) as { owner: string; repo: string };
   return await listWorkflows(user.githubToken, owner, repo);
 });
 
 export const listGitHubBranches = createServerFn({
   method: "GET",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
     throw new Error("GitHub token not configured");
   }
 
-  const { owner, repo } = ctx.data as any as { owner: string; repo: string };
+  const { owner, repo } = (ctx.data as any) as { owner: string; repo: string };
   return await listBranches(user.githubToken, owner, repo);
 });
 
 export const createGitHubPullRequest = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = authHeader.substring(7);
-  const userId = await verifyIdToken(token);
+  const userId = await requireAuth();
   const user = await getUserProfile(userId);
 
   if (!user?.githubToken) {
     throw new Error("GitHub token not configured");
   }
 
-  const { owner, repo, head, base, title, body } = ctx.data as any as {
+  const { owner, repo, head, base, title, body } = (ctx.data as any) as {
     owner: string;
     repo: string;
     head: string;

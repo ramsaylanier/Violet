@@ -41,3 +41,19 @@ export async function verifyIdToken(idToken: string): Promise<string> {
   const decodedToken = await adminAuth.verifyIdToken(idToken)
   return decodedToken.uid
 }
+
+/**
+ * Helper function to get the current user ID from a cookie in server functions
+ * This can be used by other server functions that need authentication
+ */
+export async function getUserIdFromCookie(cookieValue: string | null): Promise<string | null> {
+  if (!cookieValue) {
+    return null
+  }
+
+  try {
+    return await verifyIdToken(cookieValue)
+  } catch {
+    return null
+  }
+}

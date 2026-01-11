@@ -22,13 +22,13 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ projectId }: ChatInterfaceProps) {
-  const { firebaseUser } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSend = async () => {
-    if (!input.trim() || !firebaseUser || loading) return
+    if (!input.trim() || !isAuthenticated || loading) return
 
     const userMessage: Message = {
       role: 'user',
@@ -40,13 +40,7 @@ export function ChatInterface({ projectId }: ChatInterfaceProps) {
     setLoading(true)
 
     try {
-      const idToken = await firebaseUser.getIdToken()
       const response = await chatWithAgent({
-        request: new Request('http://localhost', {
-          headers: {
-            authorization: `Bearer ${idToken}`,
-          },
-        }),
         data: {
           message: input,
           projectId,
@@ -165,9 +159,9 @@ export function ChatInterface({ projectId }: ChatInterfaceProps) {
             }}
             placeholder="Ask me to create a project, repository, or issue..."
             className="min-h-[60px] resize-none"
-            disabled={loading || !firebaseUser}
+            disabled={loading || !isAuthenticated}
           />
-          <Button onClick={handleSend} disabled={loading || !firebaseUser || !input.trim()}>
+          <Button onClick={handleSend} disabled={loading || !isAuthenticated || !input.trim()}>
             <Send className="w-4 h-4" />
           </Button>
         </div>

@@ -1,10 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Navigate, useLocation } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute('/settings')({
+export const Route = createFileRoute("/_app/settings")({
   component: Settings,
-})
+});
 
 function Settings() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" search={{ redirect: location.pathname }} />;
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -26,5 +34,5 @@ function Settings() {
         </div>
       </div>
     </div>
-  )
+  );
 }

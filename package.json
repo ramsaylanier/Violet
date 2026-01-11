@@ -7,7 +7,11 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "start": "vite preview --port 3000",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "emulators": "firebase emulators:start",
+    "emulators:ui": "firebase emulators:start --only ui",
+    "seed": "tsx scripts/seed.ts",
+    "seed:emulator": "USE_EMULATORS=true tsx scripts/seed.ts --emulators"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -23,6 +27,8 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@tanstack/devtools-vite": "^0.4.1",
+    "@tanstack/react-devtools": "^0.9.2",
     "@tanstack/react-query": "^5.90.16",
     "@tanstack/react-router": "^1.56.0",
     "@tanstack/react-router-devtools": "^1.147.1",
@@ -55,13 +61,16 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@types/node": "^25.0.6",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.20",
+    "firebase-tools": "^13.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vite-tsconfig-paths": "^6.0.4"

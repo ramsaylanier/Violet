@@ -1,5 +1,5 @@
-import { createServerFn } from "@tanstack/start-client-core";
-import { verifyIdToken } from "@/services/authService";
+import { createServerFn } from "@tanstack/react-start";
+import { requireAuth } from "@/server/auth";
 import {
   initializeFirestore,
   setupStorage,
@@ -10,14 +10,8 @@ import {
 export const initializeFirestoreDB = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  await verifyIdToken(authHeader.substring(7));
-  const { projectId, databaseId, location } = ctx.data as any as {
+  const userId = await requireAuth();
+  const { projectId, databaseId, location } = (ctx.data as any) as {
     projectId: string;
     databaseId?: string;
     location?: string;
@@ -28,28 +22,16 @@ export const initializeFirestoreDB = createServerFn({
 export const setupFirebaseStorage = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  await verifyIdToken(authHeader.substring(7));
-  const { projectId } = ctx.data as any as { projectId: string };
+  const userId = await requireAuth();
+  const { projectId } = (ctx.data as any) as { projectId: string };
   return await setupStorage(projectId);
 });
 
 export const setupFirebaseHosting = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  await verifyIdToken(authHeader.substring(7));
-  const { projectId, siteId } = ctx.data as any as {
+  const userId = await requireAuth();
+  const { projectId, siteId } = (ctx.data as any) as {
     projectId: string;
     siteId?: string;
   };
@@ -59,21 +41,11 @@ export const setupFirebaseHosting = createServerFn({
 export const createFirestoreCollectionDB = createServerFn({
   method: "POST",
 }).handler(async (ctx) => {
-  const request = (ctx.context as any)?.request;
-  const authHeader = request?.headers?.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  await verifyIdToken(authHeader.substring(7));
-  const { projectId, collectionName, initialData } = ctx.data as any as {
+  const userId = await requireAuth();
+  const { projectId, collectionName, initialData } = (ctx.data as any) as {
     projectId: string;
     collectionName: string;
-    initialData?: Record<string, unknown>;
+    initialData?: unknown;
   };
-  return await createFirestoreCollection(
-    projectId,
-    collectionName,
-    initialData
-  );
+  return await createFirestoreCollection(projectId, collectionName, initialData);
 });

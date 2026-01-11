@@ -1,13 +1,14 @@
 import {
   createRootRoute,
   HeadContent,
-  Link,
   Outlet,
+  Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+
 import globalCss from "@/app/globals.css?url";
+import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,54 +24,32 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: RootComponent,
+  shellComponent: RootDocument,
 });
 
-function RootComponent() {
-  const { isAuthenticated, logout, user } = useAuth();
-
+function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <HeadContent />
-      <div className="min-h-screen bg-background">
-        <nav className="border-b">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="text-2xl font-bold">
-              Violet
-            </Link>
-            <div className="flex items-center gap-4">
-              {isAuthenticated && (
-                <>
-                  <Link
-                    to="/projects"
-                    className="text-sm font-medium hover:underline"
-                  >
-                    Projects
-                  </Link>
-                  <Link
-                    to="/settings"
-                    className="text-sm font-medium hover:underline"
-                  >
-                    Settings
-                  </Link>
-                  {user?.email && (
-                    <span className="text-sm text-muted-foreground">
-                      {user.email}
-                    </span>
-                  )}
-                  <Button variant="outline" size="sm" onClick={logout}>
-                    Sign Out
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </nav>
-        <main className="container mx-auto px-4 py-8">
-          <Outlet />
-        </main>
-      </div>
-      {process.env.NODE_ENV === "development" && <TanStackRouterDevtools />}
-    </>
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+
+      <body>
+        {children}
+        <TanStackDevtools
+          config={{
+            position: "bottom-right",
+          }}
+          plugins={[
+            {
+              name: "Tanstack Router",
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+            TanStackQueryDevtools,
+          ]}
+        />
+        <Scripts />
+      </body>
+    </html>
   );
 }
