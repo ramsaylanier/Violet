@@ -11,6 +11,13 @@ export interface Project {
     fullName: string
     url: string
   }>
+  githubProjects?: Array<{
+    projectId: string
+    name: string
+    owner: string
+    ownerType: 'user' | 'org'
+    url?: string
+  }>
   firebaseProjectId?: string
   settings: ProjectSettings
   metadata: Record<string, unknown>
@@ -41,6 +48,34 @@ export interface GitHubIssue {
   labels: Array<{ id: number; name: string; color: string }>
   created_at: string
   updated_at: string
+  assignees?: Array<{ id: number; login: string; avatar_url?: string }>
+  milestone?: {
+    id: number
+    title: string
+    description?: string
+    due_on?: string | null
+    state: 'open' | 'closed'
+  } | null
+  html_url?: string
+  user?: {
+    id: number
+    login: string
+    avatar_url?: string
+  }
+  comments?: number
+}
+
+export interface GitHubIssueComment {
+  id: number
+  body: string
+  user: {
+    id: number
+    login: string
+    avatar_url?: string
+  }
+  created_at: string
+  updated_at: string
+  html_url?: string
 }
 
 export interface Task {
@@ -76,4 +111,69 @@ export interface FirebaseProject {
     storageBucket?: string
     locationId?: string
   }
+}
+
+export interface GitHubProject {
+  id: string
+  number: number
+  title: string
+  body?: string | null
+  url: string
+  shortDescription?: string | null
+  closed: boolean
+  closedAt?: string | null
+  createdAt: string
+  updatedAt: string
+  public: boolean
+  owner?: {
+    id: string
+    login: string
+    type: 'User' | 'Organization'
+  }
+  creator?: {
+    id: string
+    login: string
+  }
+}
+
+export interface GitHubProjectField {
+  id: string
+  name: string
+  dataType: 'TEXT' | 'NUMBER' | 'DATE' | 'SINGLE_SELECT' | 'ITERATION'
+  singleSelectOptions?: Array<{
+    id: string
+    name: string
+    nameHTML?: string
+    description?: string | null
+  }>
+}
+
+export interface GitHubProjectItem {
+  id: string
+  type: 'ISSUE' | 'PULL_REQUEST' | 'DRAFT_ISSUE'
+  content?: {
+    id: number
+    number: number
+    title: string
+    body?: string | null
+    state?: 'OPEN' | 'CLOSED'
+    url?: string
+    repository?: {
+      name: string
+      owner: {
+        login: string
+      }
+    }
+  } | null
+  fieldValues?: Array<{
+    field: {
+      id: string
+      name: string
+    }
+    value?: string | number | null
+    singleSelectOptionId?: string | null
+    iterationId?: string | null
+  }>
+  createdAt?: string
+  updatedAt?: string
 }

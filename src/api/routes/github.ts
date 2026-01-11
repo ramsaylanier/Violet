@@ -7,15 +7,37 @@ import {
   createRepository,
   listRepositories,
   deleteRepository,
+  getAuthenticatedUser,
+  listOrganizations,
+  getRepositoryId,
   createIssue,
   listIssues,
+  updateIssue,
+  closeIssue,
+  reopenIssue,
+  addIssueComment,
+  listIssueComments,
+  addIssueLabels,
+  removeIssueLabels,
+  listProjects,
+  listProjectsForRepository,
+  getProject,
+  createProject,
+  listProjectItems,
+  updateProjectItem,
+  addProjectItem,
   listWorkflows,
   listBranches,
   createPullRequest,
 } from "@/services/githubService";
 import { getRequireAuth } from "./auth.js";
 import { getUserProfile, updateUserProfile } from "@/services/authService";
-import type { GitHubRepository, GitHubIssue } from "@/types";
+import type {
+  GitHubRepository,
+  GitHubIssue,
+  GitHubProject,
+  GitHubProjectItem,
+} from "@/types";
 
 const router = express.Router();
 
@@ -61,7 +83,8 @@ router.get("/oauth/authorize", async (req, res) => {
     //   - admin:org: Full control of orgs and teams
     //   - gist: Create gists
     //   - notifications: Access notifications
-    const scope = "repo,user:email,delete_repo,admin:org,notifications";
+    //   - project: Full access to Projects V2 (read/write) - required for Projects V2 API
+    const scope = "repo,user:email,delete_repo,admin:org,notifications,project";
 
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
 
@@ -235,6 +258,58 @@ router.post("/repositories", async (req, res) => {
 });
 
 /**
+ * GET /api/github/user
+ * Get the authenticated user's GitHub profile
+ */
+router.get("/user", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const userInfo = await getAuthenticatedUser(user.githubToken);
+    res.json(userInfo);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting authenticated user:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/organizations
+ * List all organizations for the authenticated user
+ */
+router.get("/organizations", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const organizations = await listOrganizations(user.githubToken);
+    res.json(organizations);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing organizations:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
  * GET /api/github/repositories
  * List GitHub repositories
  */
@@ -256,6 +331,43 @@ router.get("/repositories", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error listing GitHub repositories:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/repositories/:owner/:repo/id
+ * Get repository ID (for GraphQL)
+ */
+router.get("/repositories/:owner/:repo/id", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo } = req.params;
+
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    const repositoryId = await getRepositoryId(user.githubToken, owner, repo);
+
+    if (!repositoryId) {
+      return res.status(404).json({ error: "Repository not found" });
+    }
+
+    res.json({ id: repositoryId });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting repository ID:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error",
     });
@@ -358,6 +470,347 @@ router.get("/issues", async (req, res) => {
 });
 
 /**
+ * PATCH /api/github/issues/:owner/:repo/:number
+ * Update a GitHub issue
+ */
+router.patch("/issues/:owner/:repo/:number", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const { title, body, state, labels } = req.body as {
+      title?: string;
+      body?: string;
+      state?: "open" | "closed";
+      labels?: string[];
+    };
+
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const updates: any = {};
+    if (title !== undefined) updates.title = title;
+    if (body !== undefined) updates.body = body;
+    if (state !== undefined) updates.state = state;
+    if (labels !== undefined) updates.labels = labels;
+
+    const issue = await updateIssue(
+      user.githubToken,
+      owner,
+      repo,
+      issueNumber,
+      updates
+    );
+    res.json(issue);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error updating GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/issues/:owner/:repo/:number/close
+ * Close a GitHub issue
+ */
+router.post("/issues/:owner/:repo/:number/close", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const issue = await closeIssue(user.githubToken, owner, repo, issueNumber);
+    res.json(issue);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error closing GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/issues/:owner/:repo/:number/reopen
+ * Reopen a GitHub issue
+ */
+router.post("/issues/:owner/:repo/:number/reopen", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const issue = await reopenIssue(user.githubToken, owner, repo, issueNumber);
+    res.json(issue);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error reopening GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/issues/:owner/:repo/:number/comments
+ * Add a comment to a GitHub issue
+ */
+router.post("/issues/:owner/:repo/:number/comments", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const { body } = req.body as { body: string };
+
+    if (!body) {
+      return res.status(400).json({ error: "Comment body is required" });
+    }
+
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const comment = await addIssueComment(
+      user.githubToken,
+      owner,
+      repo,
+      issueNumber,
+      body
+    );
+    res.json(comment);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error adding comment to GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/issues/:owner/:repo/:number/comments
+ * List comments for a GitHub issue
+ */
+router.get("/issues/:owner/:repo/:number/comments", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const comments = await listIssueComments(
+      user.githubToken,
+      owner,
+      repo,
+      issueNumber
+    );
+    res.json(comments);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing GitHub issue comments:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/issues/:owner/:repo/:number/labels
+ * Add labels to a GitHub issue
+ */
+router.post("/issues/:owner/:repo/:number/labels", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const { labels } = req.body as { labels: string[] };
+
+    if (!Array.isArray(labels) || labels.length === 0) {
+      return res.status(400).json({ error: "Labels array is required" });
+    }
+
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    await addIssueLabels(user.githubToken, owner, repo, issueNumber, labels);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error adding labels to GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/github/issues/:owner/:repo/:number/labels
+ * Remove labels from a GitHub issue
+ */
+router.delete("/issues/:owner/:repo/:number/labels", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+    const { labels } = req.body as { labels: string[] };
+
+    if (!Array.isArray(labels) || labels.length === 0) {
+      return res.status(400).json({ error: "Labels array is required" });
+    }
+
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    await removeIssueLabels(user.githubToken, owner, repo, issueNumber, labels);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error removing labels from GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/issues/aggregated
+ * Get aggregated issues across multiple repositories
+ */
+router.get("/issues/aggregated", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { repositories, state } = req.query as {
+      repositories?: string;
+      state?: "open" | "closed" | "all";
+    };
+
+    if (!repositories) {
+      return res
+        .status(400)
+        .json({ error: "Repositories parameter is required" });
+    }
+
+    const repos = JSON.parse(repositories) as Array<{
+      owner: string;
+      name: string;
+    }>;
+
+    const allIssues = [];
+    for (const repo of repos) {
+      try {
+        const issues = await listIssues(
+          user.githubToken,
+          repo.owner,
+          repo.name,
+          state || "open"
+        );
+        allIssues.push(
+          ...issues.map((issue) => ({
+            ...issue,
+            repository: {
+              owner: repo.owner,
+              name: repo.name,
+              fullName: `${repo.owner}/${repo.name}`,
+            },
+          }))
+        );
+      } catch (error) {
+        console.error(
+          `Error fetching issues for ${repo.owner}/${repo.name}:`,
+          error
+        );
+        // Continue with other repositories even if one fails
+      }
+    }
+
+    res.json(allIssues);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error aggregating GitHub issues:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
  * GET /api/github/workflows
  * List GitHub workflows
  */
@@ -407,6 +860,272 @@ router.get("/branches", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error listing GitHub branches:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/projects
+ * List GitHub Projects
+ */
+router.get("/projects", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, ownerType } = req.query as {
+      owner: string;
+      ownerType?: "user" | "org";
+    };
+
+    console.log({ owner, ownerType });
+
+    if (!owner) {
+      return res.status(400).json({ error: "Owner parameter is required" });
+    }
+
+    const projects = await listProjects(
+      user.githubToken,
+      owner,
+      ownerType || "user"
+    );
+    res.json(projects);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing GitHub projects:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/repositories/:owner/:repo/projects
+ * List GitHub Projects for a specific repository
+ */
+router.get("/repositories/:owner/:repo/projects", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo } = req.params;
+
+    if (!owner || !repo) {
+      return res
+        .status(400)
+        .json({ error: "Owner and repository parameters are required" });
+    }
+
+    const projects = await listProjectsForRepository(
+      user.githubToken,
+      owner,
+      repo
+    );
+    res.json(projects);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing GitHub projects for repository:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/projects/:projectId
+ * Get a specific GitHub Project
+ */
+router.get("/projects/:projectId", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { projectId } = req.params;
+
+    const project = await getProject(user.githubToken, projectId);
+    res.json(project);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting GitHub project:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/projects
+ * Create a new GitHub Project
+ */
+router.post("/projects", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const {
+      owner,
+      ownerType,
+      title,
+      body,
+      public: publicProject,
+      repositoryId,
+    } = req.body as {
+      owner: string;
+      ownerType?: "user" | "org";
+      title: string;
+      body?: string;
+      public?: boolean;
+      repositoryId?: string;
+    };
+
+    if (!owner || !title) {
+      return res.status(400).json({ error: "Owner and title are required" });
+    }
+
+    const project = await createProject(
+      user.githubToken,
+      owner,
+      ownerType || "user",
+      title,
+      body,
+      publicProject || false,
+      repositoryId
+    );
+    res.json(project);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error creating GitHub project:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * GET /api/github/projects/:projectId/items
+ * List items in a GitHub Project
+ */
+router.get("/projects/:projectId/items", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { projectId } = req.params;
+
+    const items = await listProjectItems(user.githubToken, projectId);
+    res.json(items);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing GitHub project items:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * PATCH /api/github/projects/:projectId/items/:itemId
+ * Update a GitHub Project item
+ */
+router.patch("/projects/:projectId/items/:itemId", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { projectId, itemId } = req.params;
+    const { fieldId, value, valueId } = req.body as {
+      fieldId: string;
+      value?: string | number | null;
+      valueId?: string | null;
+    };
+
+    if (!fieldId) {
+      return res.status(400).json({ error: "Field ID is required" });
+    }
+
+    await updateProjectItem(
+      user.githubToken,
+      projectId,
+      itemId,
+      fieldId,
+      value ?? null,
+      valueId ?? null
+    );
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error updating GitHub project item:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * POST /api/github/projects/:projectId/items
+ * Add an item to a GitHub Project
+ */
+router.post("/projects/:projectId/items", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { projectId } = req.params;
+    const { contentId } = req.body as { contentId: string };
+
+    if (!contentId) {
+      return res.status(400).json({ error: "Content ID is required" });
+    }
+
+    const item = await addProjectItem(user.githubToken, projectId, contentId);
+    res.json(item);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error adding item to GitHub project:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error",
     });

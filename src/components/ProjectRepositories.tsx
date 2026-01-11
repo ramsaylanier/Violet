@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Github, ExternalLink, Plus, Loader2, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Github,
+  ExternalLink,
+  Plus,
+  Loader2,
+  Trash2,
+  Check,
+  ChevronsUpDown,
+  ChevronDown,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -35,7 +47,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -51,14 +62,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Project, GitHubRepository, User } from "@/types";
+import type { Project, GitHubRepository, User, GitHubIssue } from "@/types";
 import { getCurrentUser } from "@/api/auth";
 import {
   listGitHubRepositories,
   createGitHubRepository,
   deleteGitHubRepository,
+  listGitHubIssues,
 } from "@/api/github";
 import { updateProject } from "@/api/projects";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
 interface ProjectRepositoriesProps {
   project: Project;
@@ -93,6 +107,7 @@ export function ProjectRepositories({
   const [confirmRepoName, setConfirmRepoName] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [repoIssues, setRepoIssues] = useState<Record<string, { issues: GitHubIssue[]; loading: boolean; open: boolean }>>({});
 
   const projectRepos = project.repositories || [];
   const isGitHubConnected = !!user?.githubToken;
@@ -129,6 +144,47 @@ export function ProjectRepositories({
       loadRepositories();
     }
   }, [dialogOpen, dialogMode]);
+
+  const loadRepoIssues = async (repo: Repository, fullName: string) => {
+    if (!user?.githubToken || repoIssues[fullName]?.loading) return;
+
+    try {
+      setRepoIssues((prev) => ({
+        ...prev,
+        [fullName]: { issues: prev[fullName]?.issues || [], loading: true, open: prev[fullName]?.open || false },
+      }));
+
+      const issues = await listGitHubIssues(repo.owner, repo.name);
+      setRepoIssues((prev) => ({
+        ...prev,
+        [fullName]: { issues, loading: false, open: prev[fullName]?.open || false },
+      }));
+    } catch (err: any) {
+      console.error(`Failed to load issues for ${fullName}:`, err);
+      setRepoIssues((prev) => ({
+        ...prev,
+        [fullName]: { issues: prev[fullName]?.issues || [], loading: false, open: prev[fullName]?.open || false },
+      }));
+    }
+  };
+
+  const toggleRepoIssues = (repo: Repository, fullName: string) => {
+    const currentState = repoIssues[fullName];
+    const newOpenState = !currentState?.open;
+
+    setRepoIssues((prev) => ({
+      ...prev,
+      [fullName]: {
+        issues: prev[fullName]?.issues || [],
+        loading: prev[fullName]?.loading || false,
+        open: newOpenState,
+      },
+    }));
+
+    if (newOpenState && !currentState?.issues.length) {
+      loadRepoIssues(repo, fullName);
+    }
+  };
 
   const handleAddRepository = async () => {
     if (!selectedRepo) return;
@@ -299,190 +355,205 @@ export function ProjectRepositories({
                 Add Repository
               </Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Repository</DialogTitle>
-              <DialogDescription>
-                Link an existing repository or create a new one
-              </DialogDescription>
-            </DialogHeader>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Repository</DialogTitle>
+                <DialogDescription>
+                  Link an existing repository or create a new one
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button
-                  variant={dialogMode === "add" ? "default" : "outline"}
-                  onClick={() => setDialogMode("add")}
-                  className="flex-1"
-                >
-                  Link Existing
-                </Button>
-                <Button
-                  variant={dialogMode === "create" ? "default" : "outline"}
-                  onClick={() => setDialogMode("create")}
-                  className="flex-1"
-                >
-                  Create New
-                </Button>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant={dialogMode === "add" ? "default" : "outline"}
+                    onClick={() => setDialogMode("add")}
+                    className="flex-1"
+                  >
+                    Link Existing
+                  </Button>
+                  <Button
+                    variant={dialogMode === "create" ? "default" : "outline"}
+                    onClick={() => setDialogMode("create")}
+                    className="flex-1"
+                  >
+                    Create New
+                  </Button>
+                </div>
+
+                {dialogMode === "add" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="repo-select">Repository</Label>
+                      {loadingRepos ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">
+                            Loading repositories...
+                          </span>
+                        </div>
+                      ) : availableReposToAdd.length === 0 ? (
+                        <div className="text-sm text-muted-foreground mt-2">
+                          No available repositories to add. All repositories are
+                          already linked.
+                        </div>
+                      ) : (
+                        <Popover
+                          open={comboboxOpen}
+                          onOpenChange={setComboboxOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="repo-select"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={comboboxOpen}
+                              className="w-full justify-between mt-2"
+                            >
+                              {selectedRepo
+                                ? availableReposToAdd.find(
+                                    (repo) => repo.full_name === selectedRepo
+                                  )?.full_name || "Select repository..."
+                                : "Select repository..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[400px] p-0"
+                            align="start"
+                          >
+                            <Command>
+                              <CommandInput placeholder="Search repositories..." />
+                              <CommandList>
+                                <CommandEmpty>
+                                  No repositories found.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {availableReposToAdd.map((repo) => (
+                                    <CommandItem
+                                      key={repo.id}
+                                      value={repo.full_name}
+                                      onSelect={() => {
+                                        setSelectedRepo(
+                                          repo.full_name === selectedRepo
+                                            ? ""
+                                            : repo.full_name
+                                        );
+                                        setComboboxOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          selectedRepo === repo.full_name
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        }`}
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <Github className="w-4 h-4" />
+                                        <span>{repo.full_name}</span>
+                                        {repo.private && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="ml-2"
+                                          >
+                                            Private
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="repo-name">Repository Name</Label>
+                      <Input
+                        id="repo-name"
+                        value={newRepoName}
+                        onChange={(e) => setNewRepoName(e.target.value)}
+                        placeholder="my-repository"
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="repo-description">
+                        Description (optional)
+                      </Label>
+                      <Textarea
+                        id="repo-description"
+                        value={newRepoDescription}
+                        onChange={(e) => setNewRepoDescription(e.target.value)}
+                        placeholder="Repository description"
+                        className="mt-2"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="repo-private"
+                        checked={newRepoPrivate}
+                        onCheckedChange={(checked) =>
+                          setNewRepoPrivate(checked === true)
+                        }
+                      />
+                      <Label
+                        htmlFor="repo-private"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Make this repository private
+                      </Label>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-sm text-destructive">{error}</div>
+                )}
               </div>
 
-              {dialogMode === "add" ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="repo-select">Repository</Label>
-                    {loadingRepos ? (
-                      <div className="flex items-center gap-2 mt-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">
-                          Loading repositories...
-                        </span>
-                      </div>
-                    ) : availableReposToAdd.length === 0 ? (
-                      <div className="text-sm text-muted-foreground mt-2">
-                        No available repositories to add. All repositories are
-                        already linked.
-                      </div>
-                    ) : (
-                      <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="repo-select"
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={comboboxOpen}
-                            className="w-full justify-between mt-2"
-                          >
-                            {selectedRepo
-                              ? availableReposToAdd.find(
-                                  (repo) => repo.full_name === selectedRepo
-                                )?.full_name || "Select repository..."
-                              : "Select repository..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[400px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search repositories..." />
-                            <CommandList>
-                              <CommandEmpty>No repositories found.</CommandEmpty>
-                              <CommandGroup>
-                                {availableReposToAdd.map((repo) => (
-                                  <CommandItem
-                                    key={repo.id}
-                                    value={repo.full_name}
-                                    onSelect={() => {
-                                      setSelectedRepo(
-                                        repo.full_name === selectedRepo
-                                          ? ""
-                                          : repo.full_name
-                                      );
-                                      setComboboxOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        selectedRepo === repo.full_name
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      }`}
-                                    />
-                                    <div className="flex items-center gap-2">
-                                      <Github className="w-4 h-4" />
-                                      <span>{repo.full_name}</span>
-                                      {repo.private && (
-                                        <Badge variant="secondary" className="ml-2">
-                                          Private
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="repo-name">Repository Name</Label>
-                    <Input
-                      id="repo-name"
-                      value={newRepoName}
-                      onChange={(e) => setNewRepoName(e.target.value)}
-                      placeholder="my-repository"
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="repo-description">
-                      Description (optional)
-                    </Label>
-                    <Textarea
-                      id="repo-description"
-                      value={newRepoDescription}
-                      onChange={(e) => setNewRepoDescription(e.target.value)}
-                      placeholder="Repository description"
-                      className="mt-2"
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="repo-private"
-                      checked={newRepoPrivate}
-                      onCheckedChange={(checked) =>
-                        setNewRepoPrivate(checked === true)
-                      }
-                    />
-                    <Label
-                      htmlFor="repo-private"
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      Make this repository private
-                    </Label>
-                  </div>
-                </div>
-              )}
-
-              {error && <div className="text-sm text-destructive">{error}</div>}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setError(null);
-                  setSelectedRepo("");
-                  setComboboxOpen(false);
-                  setNewRepoName("");
-                  setNewRepoDescription("");
-                  setNewRepoPrivate(false);
-                }}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={
-                  dialogMode === "add"
-                    ? handleAddRepository
-                    : handleCreateRepository
-                }
-                disabled={
-                  loading ||
-                  (dialogMode === "add" && !selectedRepo) ||
-                  (dialogMode === "create" && !newRepoName.trim())
-                }
-              >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {dialogMode === "add" ? "Link Repository" : "Create Repository"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setError(null);
+                    setSelectedRepo("");
+                    setComboboxOpen(false);
+                    setNewRepoName("");
+                    setNewRepoDescription("");
+                    setNewRepoPrivate(false);
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={
+                    dialogMode === "add"
+                      ? handleAddRepository
+                      : handleCreateRepository
+                  }
+                  disabled={
+                    loading ||
+                    (dialogMode === "add" && !selectedRepo) ||
+                    (dialogMode === "create" && !newRepoName.trim())
+                  }
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {dialogMode === "add"
+                    ? "Link Repository"
+                    : "Create Repository"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
           </Dialog>
         ) : (
           <Tooltip>
@@ -554,6 +625,88 @@ export function ProjectRepositories({
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
+
+                {/* Issues Section */}
+                {isGitHubConnected && (
+                  <Collapsible
+                    open={repoIssues[repo.fullName]?.open || false}
+                    onOpenChange={() => toggleRepoIssues(repo, repo.fullName)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between p-0 h-auto hover:bg-transparent"
+                      >
+                        <div className="flex items-center gap-2">
+                          {repoIssues[repo.fullName]?.open ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                          <span className="text-sm font-medium">Issues</span>
+                          {repoIssues[repo.fullName]?.issues && (
+                            <Badge variant="secondary" className="ml-2">
+                              {repoIssues[repo.fullName].issues.length}
+                            </Badge>
+                          )}
+                        </div>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-2 mt-2">
+                      {repoIssues[repo.fullName]?.loading ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">
+                            Loading issues...
+                          </span>
+                        </div>
+                      ) : repoIssues[repo.fullName]?.issues.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-2">
+                          No open issues
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {repoIssues[repo.fullName]?.issues.slice(0, 5).map((issue) => (
+                            <div
+                              key={issue.id}
+                              className="flex items-center gap-2 p-2 bg-muted rounded-md hover:bg-muted/80"
+                            >
+                              {issue.state === "open" ? (
+                                <AlertCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                              ) : (
+                                <CheckCircle2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <a
+                                href={issue.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm flex-1 hover:underline truncate"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                #{issue.number} {issue.title}
+                              </a>
+                            </div>
+                          ))}
+                          {repoIssues[repo.fullName]?.issues.length > 5 && (
+                            <div className="text-xs text-muted-foreground text-center py-1">
+                              +{repoIssues[repo.fullName].issues.length - 5} more issues
+                            </div>
+                          )}
+                          <a
+                            href={`${repo.url}/issues`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View all issues
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -8,14 +8,7 @@ export const Route = createFileRoute("/_app/")({
 
 function Index() {
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">Welcome to Violet</h1>
-        <p className="text-xl text-muted-foreground">
-          Your development project management platform
-        </p>
-      </div>
-
+    <div className="space-y-8 px-4">
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Your Projects</h2>

@@ -18,6 +18,8 @@ import { ProjectOverview } from "@/components/ProjectOverview";
 import { ProjectSettings } from "@/components/ProjectSettings";
 import { ProjectRepositories } from "@/components/ProjectRepositories";
 import { ProjectIntegrations } from "@/components/ProjectIntegrations";
+import { ProjectIssues } from "@/components/ProjectIssues";
+import { ProjectGitHubProjects } from "@/components/ProjectGitHubProjects";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
@@ -37,7 +39,7 @@ function ProjectView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const validTabs = ["overview", "repositories", "integrations", "settings"];
+  const validTabs = ["overview", "repositories", "issues", "integrations", "settings"];
   const currentTab = (search.tab && validTabs.includes(search.tab)) 
     ? search.tab 
     : "overview";
@@ -151,6 +153,7 @@ function ProjectView() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="repositories">Repositories</TabsTrigger>
+          <TabsTrigger value="issues">Issues & Projects</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -164,6 +167,19 @@ function ProjectView() {
             project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-4">
+          <div className="space-y-6">
+            <ProjectIssues
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+            <ProjectGitHubProjects
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-4">
