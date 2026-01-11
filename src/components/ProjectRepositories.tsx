@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Github, ExternalLink, Plus, Loader2, Trash2 } from "lucide-react";
+import { Github, ExternalLink, Plus, Loader2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,12 +18,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -70,6 +76,7 @@ export function ProjectRepositories({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "create">("add");
   const [selectedRepo, setSelectedRepo] = useState<string>("");
+  const [comboboxOpen, setComboboxOpen] = useState(false);
   const [newRepoName, setNewRepoName] = useState("");
   const [newRepoDescription, setNewRepoDescription] = useState("");
   const [newRepoPrivate, setNewRepoPrivate] = useState(false);
@@ -134,6 +141,7 @@ export function ProjectRepositories({
       onUpdate(updatedProject);
       setDialogOpen(false);
       setSelectedRepo("");
+      setComboboxOpen(false);
     } catch (err: any) {
       console.error("Failed to add repository:", err);
       setError(err?.message || "Failed to add repository");
@@ -309,29 +317,65 @@ export function ProjectRepositories({
                         already linked.
                       </div>
                     ) : (
-                      <Select
-                        value={selectedRepo}
-                        onValueChange={setSelectedRepo}
-                      >
-                        <SelectTrigger id="repo-select" className="mt-2">
-                          <SelectValue placeholder="Select a repository" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableReposToAdd.map((repo) => (
-                            <SelectItem key={repo.id} value={repo.full_name}>
-                              <div className="flex items-center gap-2">
-                                <Github className="w-4 h-4" />
-                                <span>{repo.full_name}</span>
-                                {repo.private && (
-                                  <Badge variant="secondary" className="ml-2">
-                                    Private
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="repo-select"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={comboboxOpen}
+                            className="w-full justify-between mt-2"
+                          >
+                            {selectedRepo
+                              ? availableReposToAdd.find(
+                                  (repo) => repo.full_name === selectedRepo
+                                )?.full_name || "Select repository..."
+                              : "Select repository..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search repositories..." />
+                            <CommandList>
+                              <CommandEmpty>No repositories found.</CommandEmpty>
+                              <CommandGroup>
+                                {availableReposToAdd.map((repo) => (
+                                  <CommandItem
+                                    key={repo.id}
+                                    value={repo.full_name}
+                                    onSelect={() => {
+                                      setSelectedRepo(
+                                        repo.full_name === selectedRepo
+                                          ? ""
+                                          : repo.full_name
+                                      );
+                                      setComboboxOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${
+                                        selectedRepo === repo.full_name
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      }`}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <Github className="w-4 h-4" />
+                                      <span>{repo.full_name}</span>
+                                      {repo.private && (
+                                        <Badge variant="secondary" className="ml-2">
+                                          Private
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     )}
                   </div>
                 </div>
@@ -388,6 +432,7 @@ export function ProjectRepositories({
                   setDialogOpen(false);
                   setError(null);
                   setSelectedRepo("");
+                  setComboboxOpen(false);
                   setNewRepoName("");
                   setNewRepoDescription("");
                   setNewRepoPrivate(false);
