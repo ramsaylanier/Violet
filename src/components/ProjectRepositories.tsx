@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Github, ExternalLink, Plus, Loader2 } from "lucide-react";
+import { Github, ExternalLink, Plus, Loader2, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,8 +29,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Project, GitHubRepository } from "@/types";
-import { listGitHubRepositories, createGitHubRepository } from "@/api/github";
+import {
+  listGitHubRepositories,
+  createGitHubRepository,
+  deleteGitHubRepository,
+} from "@/api/github";
 import { updateProject } from "@/api/projects";
 
 interface ProjectRepositoriesProps {
@@ -38,11 +52,18 @@ interface ProjectRepositoriesProps {
   onUpdate: (updatedProject: Project) => void;
 }
 
+type Repository = {
+  owner: string;
+  name: string;
+  fullName: string;
+  url: string;
+};
+
 export function ProjectRepositories({
   project,
   onUpdate,
 }: ProjectRepositoriesProps) {
-  const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
+  const [availableRepos, setAvailableRepos] = useState<GitHubRepository[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +73,18 @@ export function ProjectRepositories({
   const [newRepoName, setNewRepoName] = useState("");
   const [newRepoDescription, setNewRepoDescription] = useState("");
   const [newRepoPrivate, setNewRepoPrivate] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [repoToRemove, setRepoToRemove] = useState<Repository | null>(null);
+  const [deleteRepo, setDeleteRepo] = useState(false);
+  const [confirmRepoName, setConfirmRepoName] = useState("");
+
+  const projectRepos = project.repositories || [];
 
   const loadRepositories = async () => {
     try {
       setLoadingRepos(true);
       const repos = await listGitHubRepositories();
-      setRepositories(repos);
+      setAvailableRepos(repos);
     } catch (err: any) {
       console.error("Failed to load repositories:", err);
       setError(err?.message || "Failed to load repositories");
@@ -79,19 +106,29 @@ export function ProjectRepositories({
       setLoading(true);
       setError(null);
 
-      const repo = repositories.find((r) => r.full_name === selectedRepo);
+      const repo = availableRepos.find((r) => r.full_name === selectedRepo);
       if (!repo) {
         throw new Error("Repository not found");
       }
 
+      // Check if repository is already added
       const [owner, repoName] = repo.full_name.split("/");
+      const newRepo: Repository = {
+        owner,
+        name: repoName,
+        fullName: repo.full_name,
+        url: repo.html_url,
+      };
+
+      if (projectRepos.some((r) => r.fullName === newRepo.fullName)) {
+        setError("This repository is already linked to this project");
+        return;
+      }
+
+      // Add to existing repositories array
+      const updatedRepos = [...projectRepos, newRepo];
       const updatedProject = await updateProject(project.id, {
-        githubRepo: {
-          owner,
-          name: repoName,
-          fullName: repo.full_name,
-          url: repo.html_url,
-        },
+        repositories: updatedRepos,
       });
 
       onUpdate(updatedProject);
@@ -122,13 +159,23 @@ export function ProjectRepositories({
       });
 
       const [owner, repoName] = newRepo.full_name.split("/");
+      const repo: Repository = {
+        owner,
+        name: repoName,
+        fullName: newRepo.full_name,
+        url: newRepo.html_url,
+      };
+
+      // Check if repository is already added
+      if (projectRepos.some((r) => r.fullName === repo.fullName)) {
+        setError("This repository is already linked to this project");
+        return;
+      }
+
+      // Add to existing repositories array
+      const updatedRepos = [...projectRepos, repo];
       const updatedProject = await updateProject(project.id, {
-        githubRepo: {
-          owner,
-          name: repoName,
-          fullName: newRepo.full_name,
-          url: newRepo.html_url,
-        },
+        repositories: updatedRepos,
       });
 
       onUpdate(updatedProject);
@@ -144,20 +191,48 @@ export function ProjectRepositories({
     }
   };
 
+  const handleRemoveClick = (repo: Repository) => {
+    setRepoToRemove(repo);
+    setRemoveDialogOpen(true);
+    setDeleteRepo(false);
+    setConfirmRepoName("");
+    setError(null);
+  };
+
   const handleRemoveRepository = async () => {
-    if (!confirm("Are you sure you want to remove this repository?")) {
-      return;
-    }
+    if (!repoToRemove) return;
 
     try {
       setLoading(true);
       setError(null);
 
+      // If deletion is requested, delete from GitHub first
+      if (deleteRepo) {
+        try {
+          await deleteGitHubRepository(repoToRemove.owner, repoToRemove.name);
+        } catch (deleteErr: any) {
+          console.error("Failed to delete repository from GitHub:", deleteErr);
+          setError(
+            deleteErr?.message ||
+              "Failed to delete repository from GitHub. It will still be removed from this project."
+          );
+          // Continue to remove from project even if deletion fails
+        }
+      }
+
+      // Remove from project repositories array
+      const updatedRepos = projectRepos.filter(
+        (r) => r.fullName !== repoToRemove.fullName
+      );
       const updatedProject = await updateProject(project.id, {
-        githubRepo: undefined,
+        repositories: updatedRepos.length > 0 ? updatedRepos : [],
       });
 
       onUpdate(updatedProject);
+      setRemoveDialogOpen(false);
+      setRepoToRemove(null);
+      setDeleteRepo(false);
+      setConfirmRepoName("");
     } catch (err: any) {
       console.error("Failed to remove repository:", err);
       setError(err?.message || "Failed to remove repository");
@@ -165,6 +240,15 @@ export function ProjectRepositories({
       setLoading(false);
     }
   };
+
+  const isRemoveDisabled = deleteRepo
+    ? confirmRepoName !== repoToRemove?.fullName
+    : false;
+
+  // Filter out already added repositories from the select list
+  const availableReposToAdd = availableRepos.filter(
+    (repo) => !projectRepos.some((pr) => pr.fullName === repo.full_name)
+  );
 
   return (
     <div className="space-y-4">
@@ -219,6 +303,11 @@ export function ProjectRepositories({
                           Loading repositories...
                         </span>
                       </div>
+                    ) : availableReposToAdd.length === 0 ? (
+                      <div className="text-sm text-muted-foreground mt-2">
+                        No available repositories to add. All repositories are
+                        already linked.
+                      </div>
                     ) : (
                       <Select
                         value={selectedRepo}
@@ -228,7 +317,7 @@ export function ProjectRepositories({
                           <SelectValue placeholder="Select a repository" />
                         </SelectTrigger>
                         <SelectContent>
-                          {repositories.map((repo) => (
+                          {availableReposToAdd.map((repo) => (
                             <SelectItem key={repo.id} value={repo.full_name}>
                               <div className="flex items-center gap-2">
                                 <Github className="w-4 h-4" />
@@ -259,7 +348,9 @@ export function ProjectRepositories({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="repo-description">Description (optional)</Label>
+                    <Label htmlFor="repo-description">
+                      Description (optional)
+                    </Label>
                     <Textarea
                       id="repo-description"
                       value={newRepoDescription}
@@ -287,9 +378,7 @@ export function ProjectRepositories({
                 </div>
               )}
 
-              {error && (
-                <div className="text-sm text-destructive">{error}</div>
-              )}
+              {error && <div className="text-sm text-destructive">{error}</div>}
             </div>
 
             <DialogFooter>
@@ -313,7 +402,11 @@ export function ProjectRepositories({
                     ? handleAddRepository
                     : handleCreateRepository
                 }
-                disabled={loading || (dialogMode === "add" && !selectedRepo) || (dialogMode === "create" && !newRepoName.trim())}
+                disabled={
+                  loading ||
+                  (dialogMode === "add" && !selectedRepo) ||
+                  (dialogMode === "create" && !newRepoName.trim())
+                }
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {dialogMode === "add" ? "Link Repository" : "Create Repository"}
@@ -323,50 +416,54 @@ export function ProjectRepositories({
         </Dialog>
       </div>
 
-      {project.githubRepo ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Github className="w-5 h-5" />
-                {project.githubRepo.fullName}
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRemoveRepository}
-                disabled={loading}
-              >
-                Remove
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">
-                Owner
-              </div>
-              <div className="text-sm mt-1">{project.githubRepo.owner}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">
-                Repository Name
-              </div>
-              <div className="text-sm mt-1">{project.githubRepo.name}</div>
-            </div>
-            <div>
-              <a
-                href={project.githubRepo.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-              >
-                View on GitHub
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </CardContent>
-        </Card>
+      {projectRepos.length > 0 ? (
+        <div className="space-y-4">
+          {projectRepos.map((repo) => (
+            <Card key={repo.fullName}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Github className="w-5 h-5" />
+                    {repo.fullName}
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveClick(repo)}
+                    disabled={loading}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Owner
+                  </div>
+                  <div className="text-sm mt-1">{repo.owner}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Repository Name
+                  </div>
+                  <div className="text-sm mt-1">{repo.name}</div>
+                </div>
+                <div>
+                  <a
+                    href={repo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    View on GitHub
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : (
         <Card>
           <CardContent className="py-12">
@@ -386,6 +483,77 @@ export function ProjectRepositories({
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Repository</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the repository from this project. You can
+              optionally delete the repository from GitHub as well.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="delete-repo"
+                checked={deleteRepo}
+                onCheckedChange={(checked) => {
+                  setDeleteRepo(checked === true);
+                  if (!checked) {
+                    setConfirmRepoName("");
+                  }
+                }}
+              />
+              <Label
+                htmlFor="delete-repo"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Also delete the repository from GitHub
+              </Label>
+            </div>
+            {deleteRepo && (
+              <div className="space-y-2">
+                <Label htmlFor="confirm-repo-name">
+                  Type the repository name to confirm deletion:
+                </Label>
+                <Input
+                  id="confirm-repo-name"
+                  value={confirmRepoName}
+                  onChange={(e) => setConfirmRepoName(e.target.value)}
+                  placeholder={repoToRemove?.fullName}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Expected: <code>{repoToRemove?.fullName}</code>
+                </p>
+              </div>
+            )}
+            {error && <div className="text-sm text-destructive">{error}</div>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setRemoveDialogOpen(false);
+                setRepoToRemove(null);
+                setDeleteRepo(false);
+                setConfirmRepoName("");
+                setError(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveRepository}
+              disabled={loading || isRemoveDisabled}
+              variant={deleteRepo ? "destructive" : "default"}
+            >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {deleteRepo ? "Remove and Delete" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

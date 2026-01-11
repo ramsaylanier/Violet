@@ -6,6 +6,7 @@ import express from "express";
 import {
   createRepository,
   listRepositories,
+  deleteRepository,
   createIssue,
   listIssues,
   listWorkflows,
@@ -60,7 +61,7 @@ router.get("/oauth/authorize", async (req, res) => {
     //   - admin:org: Full control of orgs and teams
     //   - gist: Create gists
     //   - notifications: Access notifications
-    const scope = "repo,user:email";
+    const scope = "repo,user:email,delete_repo,admin:org,notifications";
 
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
 
@@ -199,8 +200,6 @@ router.post("/repositories", async (req, res) => {
     const userId = await getRequireAuth(req);
     const user = await getUserProfile(userId);
 
-    console.log(user?.githubToken);
-
     if (!user?.githubToken) {
       return res.status(400).json({ error: "GitHub token not configured" });
     }
@@ -255,6 +254,40 @@ router.get("/repositories", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error listing GitHub repositories:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
+/**
+ * DELETE /api/github/repositories/:owner/:repo
+ * Delete a GitHub repository
+ */
+router.delete("/repositories/:owner/:repo", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo } = req.params;
+
+    console.log({ owner, repo });
+
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    await deleteRepository(user.githubToken, owner, repo);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error deleting GitHub repository:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error",
     });

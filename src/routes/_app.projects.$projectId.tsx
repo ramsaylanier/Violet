@@ -109,10 +109,10 @@ function ProjectView() {
           </div>
         </div>
         <div className="flex gap-2">
-          {project.githubRepo && (
+          {project.repositories && project.repositories.length > 0 && (
             <Badge variant="secondary" className="gap-1">
               <Github className="w-3 h-3" />
-              GitHub
+              GitHub ({project.repositories.length})
             </Badge>
           )}
           {project.firebaseProjectId && (

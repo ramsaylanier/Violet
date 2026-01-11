@@ -68,6 +68,33 @@ export async function listRepositories(
   }));
 }
 
+export async function deleteRepository(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<void> {
+  console.log({ owner, repo });
+  try {
+    const octokit = createGitHubClient(token);
+    await octokit.repos.delete({
+      owner,
+      repo,
+    });
+  } catch (error: any) {
+    console.error("Error deleting GitHub repository:", error);
+    // Log more details about the error
+    if (error?.response) {
+      console.error("GitHub API Error Details:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    }
+    throw error;
+  }
+}
+
 export async function createIssue(
   token: string,
   owner: string,
@@ -89,7 +116,7 @@ export async function createIssue(
     id: response.data.id,
     number: response.data.number,
     title: response.data.title,
-    body: response.data.body,
+    body: response.data.body ?? null,
     state: response.data.state as "open" | "closed",
     labels: Array.isArray(response.data.labels)
       ? response.data.labels

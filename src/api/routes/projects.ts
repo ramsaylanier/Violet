@@ -126,11 +126,9 @@ router.get("/:id", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error getting project:", error);
-    res
-      .status(500)
-      .json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 });
 
@@ -147,12 +145,12 @@ router.put("/:id", async (req, res) => {
       description?: string;
       settings?: ProjectSettings;
       metadata?: { [key: string]: string };
-      githubRepo?: {
+      repositories?: Array<{
         owner: string;
         name: string;
         fullName: string;
         url: string;
-      };
+      }>;
     };
 
     const doc = await adminDb.collection("projects").doc(id).get();
@@ -177,8 +175,15 @@ router.put("/:id", async (req, res) => {
       updateData.description = updates.description;
     if (updates.settings !== undefined) updateData.settings = updates.settings;
     if (updates.metadata !== undefined) updateData.metadata = updates.metadata;
-    if (updates.githubRepo !== undefined)
-      updateData.githubRepo = updates.githubRepo;
+    if (updates.repositories !== undefined) {
+      // Use FieldValue.delete() if array is empty, otherwise set the array
+      if (updates.repositories.length === 0) {
+        const { FieldValue } = await import("firebase-admin/firestore");
+        updateData.repositories = FieldValue.delete();
+      } else {
+        updateData.repositories = updates.repositories;
+      }
+    }
 
     await adminDb.collection("projects").doc(id).update(updateData);
 
@@ -198,11 +203,9 @@ router.put("/:id", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error updating project:", error);
-    res
-      .status(500)
-      .json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 });
 
@@ -236,11 +239,9 @@ router.delete("/:id", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error deleting project:", error);
-    res
-      .status(500)
-      .json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 });
 

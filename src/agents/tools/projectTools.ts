@@ -1,44 +1,72 @@
-import type { createProject, updateProject } from '@/api/projects'
+import type { createProject, updateProject } from "@/api/projects";
 
 export const projectTools = [
   {
-    name: 'create_project',
-    description: 'Create a new development project. Use this when the user wants to create a new project.',
+    name: "create_project",
+    description:
+      "Create a new development project. Use this when the user wants to create a new project.",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        name: { type: 'string', description: 'The name of the project' },
-        description: { type: 'string', description: 'A description of the project' },
+        name: { type: "string", description: "The name of the project" },
+        description: {
+          type: "string",
+          description: "A description of the project",
+        },
         settings: {
-          type: 'object',
+          type: "object",
           properties: {
-            autoSync: { type: 'boolean', description: 'Whether to automatically sync with GitHub/Firebase' },
-            notifications: { type: 'boolean', description: 'Whether to enable notifications' },
+            autoSync: {
+              type: "boolean",
+              description: "Whether to automatically sync with GitHub/Firebase",
+            },
+            notifications: {
+              type: "boolean",
+              description: "Whether to enable notifications",
+            },
           },
         },
-        metadata: { type: 'object', description: 'Additional metadata for the project' },
+        metadata: {
+          type: "object",
+          description: "Additional metadata for the project",
+        },
       },
-      required: ['name'],
+      required: ["name"],
     },
   },
   {
-    name: 'update_project',
-    description: 'Update an existing project. Use this when the user wants to modify a project.',
+    name: "update_project",
+    description:
+      "Update an existing project. Use this when the user wants to modify a project.",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        projectId: { type: 'string', description: 'The ID of the project to update' },
+        projectId: {
+          type: "string",
+          description: "The ID of the project to update",
+        },
         updates: {
-          type: 'object',
+          type: "object",
           properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            githubRepo: { type: 'object' },
-            firebaseProjectId: { type: 'string' },
+            name: { type: "string" },
+            description: { type: "string" },
+            repositories: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  owner: { type: "string" },
+                  name: { type: "string" },
+                  fullName: { type: "string" },
+                  url: { type: "string" },
+                },
+              },
+            },
+            firebaseProjectId: { type: "string" },
           },
         },
       },
-      required: ['projectId', 'updates'],
+      required: ["projectId", "updates"],
     },
   },
-] as const
+] as const;

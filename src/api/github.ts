@@ -2,7 +2,7 @@
  * Client-side GitHub API functions
  */
 
-import { apiGet, apiPost } from "./client.js";
+import { apiGet, apiPost, apiDelete } from "./client.js";
 import type { GitHubRepository, GitHubIssue } from "@/types";
 
 export async function createGitHubRepository(data: {
@@ -62,6 +62,15 @@ export async function createGitHubPullRequest(data: {
   base: string;
 }): Promise<any> {
   return apiPost<any>("/github/pull-requests", data);
+}
+
+export async function deleteGitHubRepository(
+  owner: string,
+  repo: string
+): Promise<{ success: boolean }> {
+  return apiDelete<{ success: boolean }>(
+    `/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+  );
 }
 
 export async function disconnectGitHub(): Promise<{ success: boolean }> {

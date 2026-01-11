@@ -5,12 +5,12 @@ export interface Project {
   createdAt: Date
   updatedAt: Date
   userId: string // Added for querying
-  githubRepo?: {
+  repositories?: Array<{
     owner: string
     name: string
     fullName: string
     url: string
-  }
+  }>
   firebaseProjectId?: string
   settings: ProjectSettings
   metadata: Record<string, unknown>

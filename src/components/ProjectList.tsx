@@ -72,7 +72,7 @@ export function ProjectList() {
               <CardTitle className="flex items-center justify-between">
                 <span>{project.name}</span>
                 <div className="flex gap-2">
-                  {project.githubRepo && (
+                  {project.repositories && project.repositories.length > 0 && (
                     <Github className="w-4 h-4 text-muted-foreground" />
                   )}
                   {project.firebaseProjectId && (
@@ -86,8 +86,13 @@ export function ProjectList() {
             </CardHeader>
             <CardContent>
               <div className="text-sm text-muted-foreground space-y-1">
-                {project.githubRepo && (
-                  <div>GitHub: {project.githubRepo.fullName}</div>
+                {project.repositories && project.repositories.length > 0 && (
+                  <div>
+                    GitHub:{" "}
+                    {project.repositories.length === 1
+                      ? project.repositories[0].fullName
+                      : `${project.repositories.length} repositories`}
+                  </div>
                 )}
                 {project.firebaseProjectId && (
                   <div>Firebase: {project.firebaseProjectId}</div>

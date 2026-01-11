@@ -64,14 +64,16 @@ function NewProject() {
 
       // If GitHub repo was created, update the project with repo information
       if (githubRepo) {
-        const [owner] = githubRepo.full_name.split("/");
+        const [owner, repoName] = githubRepo.full_name.split("/");
         await updateProject(project.id, {
-          githubRepo: {
-            owner,
-            name: githubRepo.name,
-            fullName: githubRepo.full_name,
-            url: githubRepo.html_url,
-          },
+          repositories: [
+            {
+              owner,
+              name: repoName,
+              fullName: githubRepo.full_name,
+              url: githubRepo.html_url,
+            },
+          ],
         });
       }
 

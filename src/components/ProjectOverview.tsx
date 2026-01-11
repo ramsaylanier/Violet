@@ -46,42 +46,46 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
           </CardContent>
         </Card>
 
-        {project.githubRepo && (
+        {project.repositories && project.repositories.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Github className="w-5 h-5" />
-                GitHub Repository
+                GitHub Repositories ({project.repositories.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">
-                  Repository
+              {project.repositories.map((repo, index) => (
+                <div key={repo.fullName} className={index > 0 ? "pt-4 border-t" : ""}>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Repository
+                    </div>
+                    <div className="text-sm mt-1">
+                      {repo.fullName}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Owner
+                    </div>
+                    <div className="text-sm mt-1">
+                      {repo.owner}
+                    </div>
+                  </div>
+                  <div>
+                    <a
+                      href={repo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      View on GitHub
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
-                <div className="text-sm mt-1">
-                  {project.githubRepo.fullName}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">
-                  Owner
-                </div>
-                <div className="text-sm mt-1">
-                  {project.githubRepo.owner}
-                </div>
-              </div>
-              <div>
-                <a
-                  href={project.githubRepo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                >
-                  View on GitHub
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              ))}
             </CardContent>
           </Card>
         )}
