@@ -151,6 +151,7 @@ router.put("/:id", async (req, res) => {
         fullName: string;
         url: string;
       }>;
+      firebaseProjectId?: string | null;
     };
 
     const doc = await adminDb.collection("projects").doc(id).get();
@@ -182,6 +183,18 @@ router.put("/:id", async (req, res) => {
         updateData.repositories = FieldValue.delete();
       } else {
         updateData.repositories = updates.repositories;
+      }
+    }
+    if (updates.firebaseProjectId !== undefined) {
+      // Support setting or removing the Firebase project ID
+      if (
+        updates.firebaseProjectId === null ||
+        updates.firebaseProjectId === ""
+      ) {
+        const { FieldValue } = await import("firebase-admin/firestore");
+        updateData.firebaseProjectId = FieldValue.delete();
+      } else {
+        updateData.firebaseProjectId = updates.firebaseProjectId;
       }
     }
 

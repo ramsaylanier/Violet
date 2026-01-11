@@ -152,12 +152,14 @@ router.get("/oauth/callback", async (req, res) => {
     res.clearCookie("github_oauth_state");
 
     // Redirect to settings page with success message
-    res.redirect("/settings?github_connected=true");
+    const frontendUrl = process.env.FRONTEND_URL || `http://localhost:3000`;
+    res.redirect(`${frontendUrl}/settings?github_connected=true`);
   } catch (error) {
     console.error("Error handling GitHub OAuth callback:", error);
     res.clearCookie("github_oauth_state");
+    const frontendUrl = process.env.FRONTEND_URL || `http://localhost:3000`;
     res.redirect(
-      `/settings?github_error=${encodeURIComponent(error instanceof Error ? error.message : "Failed to connect GitHub")}`
+      `${frontendUrl}/settings?github_error=${encodeURIComponent(error instanceof Error ? error.message : "Failed to connect GitHub")}`
     );
   }
 });

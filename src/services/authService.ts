@@ -32,7 +32,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
 
 export async function updateUserProfile(
   userId: string,
-  updates: Partial<Pick<User, 'name' | 'githubToken'>>
+  updates: Partial<Pick<User, 'name' | 'githubToken' | 'googleToken'>>
 ): Promise<void> {
   await adminDb.collection('users').doc(userId).update(updates)
 }

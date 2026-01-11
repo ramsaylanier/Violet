@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Github, ExternalLink, Plus, Loader2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import {
   Card,
@@ -36,6 +37,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -45,7 +51,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Project, GitHubRepository } from "@/types";
+import type { Project, GitHubRepository, User } from "@/types";
+import { getCurrentUser } from "@/api/auth";
 import {
   listGitHubRepositories,
   createGitHubRepository,
@@ -84,8 +91,11 @@ export function ProjectRepositories({
   const [repoToRemove, setRepoToRemove] = useState<Repository | null>(null);
   const [deleteRepo, setDeleteRepo] = useState(false);
   const [confirmRepoName, setConfirmRepoName] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
   const projectRepos = project.repositories || [];
+  const isGitHubConnected = !!user?.githubToken;
 
   const loadRepositories = async () => {
     try {
@@ -99,6 +109,20 @@ export function ProjectRepositories({
       setLoadingRepos(false);
     }
   };
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error("Error loading user:", error);
+      } finally {
+        setLoadingUser(false);
+      }
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     if (dialogOpen && dialogMode === "add") {
@@ -267,13 +291,14 @@ export function ProjectRepositories({
             Manage GitHub repositories linked to this project
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Repository
-            </Button>
-          </DialogTrigger>
+        {isGitHubConnected ? (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Repository
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Repository</DialogTitle>
@@ -458,7 +483,31 @@ export function ProjectRepositories({
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-block">
+                <Button disabled>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Repository
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="space-y-2">
+                <p>GitHub account required to add repositories.</p>
+                <Link
+                  to="/settings"
+                  className="underline font-medium text-background hover:text-background/80"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Connect GitHub in settings
+                </Link>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {projectRepos.length > 0 ? (
@@ -520,10 +569,35 @@ export function ProjectRepositories({
                   Link or create a GitHub repository to get started
                 </p>
               </div>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Repository
-              </Button>
+              {isGitHubConnected ? (
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Repository
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button disabled onClick={() => setDialogOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Repository
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-2">
+                      <p>GitHub account required to add repositories.</p>
+                      <Link
+                        to="/settings"
+                        className="underline font-medium text-background hover:text-background/80"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Connect GitHub in settings
+                      </Link>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </CardContent>
         </Card>

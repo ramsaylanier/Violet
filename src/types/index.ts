@@ -62,4 +62,18 @@ export interface User {
   name?: string
   createdAt: Date
   githubToken?: string // encrypted reference
+  googleToken?: string // encrypted reference
+}
+
+export interface FirebaseProject {
+  projectId: string
+  projectNumber?: string
+  displayName?: string
+  name?: string
+  resources?: {
+    hostingSite?: string
+    realtimeDatabaseInstance?: string
+    storageBucket?: string
+    locationId?: string
+  }
 }

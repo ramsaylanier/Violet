@@ -26,12 +26,21 @@ import { Trash2 } from "lucide-react";
 
 interface ProjectSettingsProps {
   project: Project;
+  onUpdate?: (updatedProject: Project) => void;
 }
 
-export function ProjectSettings({ project }: ProjectSettingsProps) {
+export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [localProject, setLocalProject] = useState(project);
+
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setLocalProject(updatedProject);
+    if (onUpdate) {
+      onUpdate(updatedProject);
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProject(project.id),
@@ -65,13 +74,13 @@ export function ProjectSettings({ project }: ProjectSettingsProps) {
           <div>
             <div className="text-sm font-medium">Auto Sync</div>
             <div className="text-sm text-muted-foreground mt-1">
-              {project.settings.autoSync ? "Enabled" : "Disabled"}
+              {localProject.settings.autoSync ? "Enabled" : "Disabled"}
             </div>
           </div>
           <div>
             <div className="text-sm font-medium">Notifications</div>
             <div className="text-sm text-muted-foreground mt-1">
-              {project.settings.notifications ? "Enabled" : "Disabled"}
+              {localProject.settings.notifications ? "Enabled" : "Disabled"}
             </div>
           </div>
         </CardContent>
@@ -101,7 +110,7 @@ export function ProjectSettings({ project }: ProjectSettingsProps) {
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete
-                  the project "{project.name}" and all of its data.
+                  the project "{localProject.name}" and all of its data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

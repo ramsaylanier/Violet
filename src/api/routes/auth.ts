@@ -49,7 +49,6 @@ async function getUserIdFromRequest(
  */
 export async function getRequireAuth(req: express.Request): Promise<string> {
   const userId = await getUserIdFromRequest(req);
-  console.trace({ userId });
   if (!userId) {
     throw new Error("Unauthorized");
   }

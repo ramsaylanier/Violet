@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProject } from "@/api/projects";
 import type { Project } from "@/types";
@@ -17,18 +17,30 @@ import { Github, Flame, ArrowLeft } from "lucide-react";
 import { ProjectOverview } from "@/components/ProjectOverview";
 import { ProjectSettings } from "@/components/ProjectSettings";
 import { ProjectRepositories } from "@/components/ProjectRepositories";
+import { ProjectIntegrations } from "@/components/ProjectIntegrations";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      tab: (search.tab as string) || undefined,
+    };
+  },
 });
 
 function ProjectView() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { projectId } = Route.useParams();
+  const search = useSearch({ from: "/_app/projects/$projectId" });
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const validTabs = ["overview", "repositories", "integrations", "settings"];
+  const currentTab = (search.tab && validTabs.includes(search.tab)) 
+    ? search.tab 
+    : "overview";
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -124,10 +136,22 @@ function ProjectView() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs 
+        value={currentTab} 
+        onValueChange={(value) => {
+          navigate({
+            to: "/projects/$projectId",
+            params: { projectId },
+            search: { tab: value },
+            replace: true,
+          });
+        }}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="repositories">Repositories</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -142,8 +166,15 @@ function ProjectView() {
           />
         </TabsContent>
 
+        <TabsContent value="integrations" className="space-y-4">
+          <ProjectIntegrations
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        </TabsContent>
+
         <TabsContent value="settings" className="space-y-4">
-          <ProjectSettings project={project} />
+          <ProjectSettings project={project} onUpdate={setProject} />
         </TabsContent>
       </Tabs>
     </div>
