@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   redirect?: string;
@@ -19,26 +19,31 @@ interface LoginFormProps {
 export function LoginForm({ redirect }: LoginFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate({ to: redirect || "/" });
+    }
+  }, [user, redirect]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     const formData = new FormData(e.currentTarget);
-
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
       // Authenticate with Firebase client SDK
-      await login({ email, password });
+      await signIn(email, password);
     } catch (err: any) {
-      console.error("Login error:", err);
       setError(
         err?.message || err?.code || "Authentication failed. Please try again."
       );
+    } finally {
       setLoading(false);
     }
   };

@@ -1,16 +1,29 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_app")({
   component: Index,
-  beforeLoad: ({ context }) => {
-    console.log({ context });
-    if (!context.auth?.isAuthenticated) {
-      throw redirect({ to: "/login" });
-    }
-  },
 });
 
 function Index() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate({ to: "/login" });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <Outlet />

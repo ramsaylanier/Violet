@@ -10,19 +10,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SignupFormProps {
   redirect?: string;
 }
 
 export function SignupForm({ redirect }: SignupFormProps) {
-  const { signup, isSigningUp } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSigningUp, setIsSigningUp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +40,17 @@ export function SignupForm({ redirect }: SignupFormProps) {
       return;
     }
 
+    setIsSigningUp(true);
     try {
-      await signup({ email, password });
+      await signUp(email, password);
       navigate({ to: redirect || "/" });
     } catch (err: any) {
       console.error(err);
       setError(
         err?.message || err?.code || "Account creation failed. Please try again."
       );
+    } finally {
+      setIsSigningUp(false);
     }
   };
 

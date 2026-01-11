@@ -2,10 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { githubTools } from './tools/githubTools'
 import { firebaseTools } from './tools/firebaseTools'
 import { projectTools } from './tools/projectTools'
-import * as githubAPI from '@/server/github'
-import * as firebaseAPI from '@/server/firebase'
-import * as projectAPI from '@/server/projects'
-import * as projectDetailAPI from '@/server/projects.$projectId'
+import * as githubAPI from '@/api/github'
+import * as firebaseAPI from '@/api/firebase'
+import * as projectAPI from '@/api/projects'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -17,7 +16,7 @@ const allTools = [...githubTools, ...firebaseTools, ...projectTools]
 export interface AgentContext {
   userId: string
   projectId?: string
-  request: Request
+  request?: any // Express Request or Fetch Request
 }
 
 export interface AgentResponse {
@@ -79,44 +78,22 @@ Always be concise and helpful. When a user asks you to do something, use the app
 
           // Route to appropriate API function
           if (toolName === 'create_github_repository') {
-            result = await githubAPI.createGitHubRepository({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await githubAPI.createGitHubRepository(toolInput as any)
           } else if (toolName === 'create_github_issue') {
-            result = await githubAPI.createGitHubIssue({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await githubAPI.createGitHubIssue(toolInput as any)
           } else if (toolName === 'list_github_repositories') {
-            result = await githubAPI.listGitHubRepositories({
-              request: context.request,
-            } as any)
+            result = await githubAPI.listGitHubRepositories()
           } else if (toolName === 'initialize_firestore') {
-            result = await firebaseAPI.initializeFirestoreDB({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await firebaseAPI.initializeFirestoreDB(toolInput as any)
           } else if (toolName === 'setup_firebase_storage') {
-            result = await firebaseAPI.setupFirebaseStorage({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await firebaseAPI.setupFirebaseStorage(toolInput as any)
           } else if (toolName === 'setup_firebase_hosting') {
-            result = await firebaseAPI.setupFirebaseHosting({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await firebaseAPI.setupFirebaseHosting(toolInput as any)
           } else if (toolName === 'create_project') {
-            result = await projectAPI.createProject({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            result = await projectAPI.createProject(toolInput as any)
           } else if (toolName === 'update_project') {
-            result = await projectDetailAPI.updateProject({
-              request: context.request,
-              data: toolInput,
-            } as any)
+            const { projectId, updates } = toolInput as any;
+            result = await projectAPI.updateProject(projectId, updates)
           } else {
             throw new Error(`Unknown tool: ${toolName}`)
           }

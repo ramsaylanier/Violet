@@ -1,24 +1,38 @@
-import admin from 'firebase-admin'
+import admin from "firebase-admin";
 
-// Initialize Firebase Admin SDK
+import serviceAccount from "../../.firebase-key.json";
+import type { ServiceAccount } from "firebase-admin";
+
 if (!admin.apps.length) {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : undefined
+  // For emulator, use a simple credential
+  // For production, use service account
+  const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
 
-  if (!serviceAccount && process.env.FIREBASE_PROJECT_ID) {
-    // Use Application Default Credentials if service account not provided
+  if (isEmulator) {
+    // Ensure emulator host format is correct (no http:// prefix)
+    const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST?.replace(
+      /^https?:\/\//,
+      ""
+    );
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = emulatorHost;
+
+    const projectId = process.env.FIREBASE_PROJECT_ID || "demo-timelines";
+    console.log(
+      `🔥 Initializing Firebase Admin for emulator with project: ${projectId}, host: ${emulatorHost}`
+    );
+
     admin.initializeApp({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-    })
-  } else if (serviceAccount) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    })
+      projectId,
+    });
   } else {
-    throw new Error('Firebase Admin SDK requires either FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID')
+    console.log(
+      `🔥 Initializing Firebase Admin for production with service account`
+    );
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as ServiceAccount),
+    });
   }
 }
 
-export const adminDb = admin.firestore()
-export const adminAuth = admin.auth()
+export const adminDb = admin.firestore();
+export const adminAuth = admin.auth();

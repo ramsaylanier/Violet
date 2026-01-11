@@ -1,4 +1,4 @@
-import type { createGitHubRepository as createRepository, createGitHubIssue as createIssue, listGitHubRepositories as listRepositories } from '@/server/github'
+import type { createGitHubRepository as createRepository, createGitHubIssue as createIssue, listGitHubRepositories as listRepositories } from '@/api/github'
 
 export const githubTools = [
   {

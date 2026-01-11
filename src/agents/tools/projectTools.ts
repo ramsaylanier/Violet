@@ -1,5 +1,4 @@
-import type { createProject } from '@/server/projects'
-import type { updateProject } from '@/server/projects.$projectId'
+import type { createProject, updateProject } from '@/api/projects'
 
 export const projectTools = [
   {
