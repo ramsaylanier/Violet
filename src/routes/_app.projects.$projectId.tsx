@@ -13,7 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Github, Flame, ArrowLeft, ExternalLink, Calendar } from "lucide-react";
+import { Github, Flame, ArrowLeft } from "lucide-react";
+import { ProjectOverview } from "@/components/ProjectOverview";
+import { ProjectSettings } from "@/components/ProjectSettings";
+import { ProjectRepositories } from "@/components/ProjectRepositories";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
@@ -124,128 +127,23 @@ function ProjectView() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="repositories">Repositories</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Project ID
-                  </div>
-                  <div className="text-sm font-mono mt-1">{project.id}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Created
-                  </div>
-                  <div className="text-sm mt-1">
-                    {new Date(project.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Last Updated
-                  </div>
-                  <div className="text-sm mt-1">
-                    {new Date(project.updatedAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <ProjectOverview project={project} />
+        </TabsContent>
 
-            {project.githubRepo && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Github className="w-5 h-5" />
-                    GitHub Repository
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Repository
-                    </div>
-                    <div className="text-sm mt-1">
-                      {project.githubRepo.fullName}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Owner
-                    </div>
-                    <div className="text-sm mt-1">
-                      {project.githubRepo.owner}
-                    </div>
-                  </div>
-                  <div>
-                    <a
-                      href={project.githubRepo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                    >
-                      View on GitHub
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {project.firebaseProjectId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Flame className="w-5 h-5" />
-                    Firebase Project
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Project ID
-                    </div>
-                    <div className="text-sm font-mono mt-1">
-                      {project.firebaseProjectId}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+        <TabsContent value="repositories" className="space-y-4">
+          <ProjectRepositories
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Settings</CardTitle>
-              <CardDescription>
-                Manage your project settings and preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="text-sm font-medium">Auto Sync</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {project.settings.autoSync ? "Enabled" : "Disabled"}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium">Notifications</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {project.settings.notifications ? "Enabled" : "Disabled"}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ProjectSettings project={project} />
         </TabsContent>
       </Tabs>
     </div>

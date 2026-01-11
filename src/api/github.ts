@@ -63,3 +63,11 @@ export async function createGitHubPullRequest(data: {
 }): Promise<any> {
   return apiPost<any>("/github/pull-requests", data);
 }
+
+export async function disconnectGitHub(): Promise<{ success: boolean }> {
+  return apiPost<{ success: boolean }>("/github/oauth/disconnect");
+}
+
+export async function getGitHubOAuthUrl(): Promise<{ url: string }> {
+  return apiGet<{ url: string }>("/github/oauth/authorize");
+}

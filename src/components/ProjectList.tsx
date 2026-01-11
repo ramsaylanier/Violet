@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -10,38 +10,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { listProjects } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Project } from "@/types";
 import { Plus, Github, Flame } from "lucide-react";
 
 export function ProjectList() {
   const { isAuthenticated } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const loadProjects = async () => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    enabled: isAuthenticated,
+  });
 
-    try {
-      const data = await listProjects();
-      setProjects(data);
-    } catch (error) {
-      console.error("Failed to load projects:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProjects();
-  }, [isAuthenticated]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         Loading projects...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 space-y-4">
+        <p className="text-destructive">
+          Failed to load projects. Please try again.
+        </p>
       </div>
     );
   }

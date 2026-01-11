@@ -1,10 +1,10 @@
-import { Octokit } from '@octokit/rest'
-import type { GitHubRepository, GitHubIssue } from '@/types'
+import { Octokit } from "@octokit/rest";
+import type { GitHubRepository, GitHubIssue } from "@/types";
 
 export function createGitHubClient(token: string): Octokit {
   return new Octokit({
     auth: token,
-  })
+  });
 }
 
 export async function createRepository(
@@ -13,32 +13,48 @@ export async function createRepository(
   description?: string,
   isPrivate = false
 ): Promise<GitHubRepository> {
-  const octokit = createGitHubClient(token)
-  const response = await octokit.repos.createForAuthenticatedUser({
-    name,
-    description,
-    private: isPrivate,
-    auto_init: true,
-  })
+  try {
+    const octokit = createGitHubClient(token);
+    const response = await octokit.repos.createForAuthenticatedUser({
+      name,
+      description,
+      private: isPrivate,
+      auto_init: true,
+    });
 
-  return {
-    id: response.data.id,
-    name: response.data.name,
-    full_name: response.data.full_name,
-    description: response.data.description,
-    private: response.data.private,
-    html_url: response.data.html_url,
-    created_at: response.data.created_at,
-    updated_at: response.data.updated_at,
+    return {
+      id: response.data.id,
+      name: response.data.name,
+      full_name: response.data.full_name,
+      description: response.data.description,
+      private: response.data.private,
+      html_url: response.data.html_url,
+      created_at: response.data.created_at,
+      updated_at: response.data.updated_at,
+    };
+  } catch (error: any) {
+    console.error("Error creating GitHub repository:", error);
+    // Log more details about the error
+    if (error?.response) {
+      console.error("GitHub API Error Details:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    }
+    throw error;
   }
 }
 
-export async function listRepositories(token: string): Promise<GitHubRepository[]> {
-  const octokit = createGitHubClient(token)
+export async function listRepositories(
+  token: string
+): Promise<GitHubRepository[]> {
+  const octokit = createGitHubClient(token);
   const response = await octokit.repos.listForAuthenticatedUser({
     per_page: 100,
-    sort: 'updated',
-  })
+    sort: "updated",
+  });
 
   return response.data.map((repo) => ({
     id: repo.id,
@@ -49,7 +65,7 @@ export async function listRepositories(token: string): Promise<GitHubRepository[
     html_url: repo.html_url,
     created_at: repo.created_at || new Date().toISOString(),
     updated_at: repo.updated_at || new Date().toISOString(),
-  }))
+  }));
 }
 
 export async function createIssue(
@@ -60,76 +76,92 @@ export async function createIssue(
   body?: string,
   labels?: string[]
 ): Promise<GitHubIssue> {
-  const octokit = createGitHubClient(token)
+  const octokit = createGitHubClient(token);
   const response = await octokit.issues.create({
     owner,
     repo,
     title,
     body,
     labels,
-  })
+  });
 
   return {
     id: response.data.id,
     number: response.data.number,
     title: response.data.title,
     body: response.data.body,
-    state: response.data.state as 'open' | 'closed',
+    state: response.data.state as "open" | "closed",
     labels: Array.isArray(response.data.labels)
       ? response.data.labels
-          .filter((label): label is { id: number; name: string; color: string } => typeof label === 'object' && label !== null && 'id' in label && 'name' in label)
+          .filter(
+            (label): label is { id: number; name: string; color: string } =>
+              typeof label === "object" &&
+              label !== null &&
+              "id" in label &&
+              "name" in label
+          )
           .map((label) => ({
             id: (label as { id: number }).id,
             name: (label as { name: string }).name,
-            color: (label as { color?: string }).color || '000000',
+            color: (label as { color?: string }).color || "000000",
           }))
       : [],
     created_at: response.data.created_at,
     updated_at: response.data.updated_at,
-  }
+  };
 }
 
 export async function listIssues(
   token: string,
   owner: string,
   repo: string,
-  state: 'open' | 'closed' | 'all' = 'open'
+  state: "open" | "closed" | "all" = "open"
 ): Promise<GitHubIssue[]> {
-  const octokit = createGitHubClient(token)
+  const octokit = createGitHubClient(token);
   const response = await octokit.issues.listForRepo({
     owner,
     repo,
     state,
     per_page: 100,
-  })
+  });
 
   return response.data.map((issue) => ({
     id: issue.id,
     number: issue.number,
     title: issue.title,
     body: issue.body ?? null,
-    state: issue.state as 'open' | 'closed',
+    state: issue.state as "open" | "closed",
     labels: Array.isArray(issue.labels)
       ? issue.labels
-          .filter((label): label is { id: number; name: string; color: string } => typeof label === 'object' && label !== null && 'id' in label && 'name' in label)
+          .filter(
+            (label): label is { id: number; name: string; color: string } =>
+              typeof label === "object" &&
+              label !== null &&
+              "id" in label &&
+              "name" in label
+          )
           .map((label) => ({
             id: (label as { id: number }).id,
             name: (label as { name: string }).name,
-            color: (label as { color?: string }).color || '000000',
+            color: (label as { color?: string }).color || "000000",
           }))
       : [],
     created_at: issue.created_at,
     updated_at: issue.updated_at,
-  }))
+  }));
 }
 
-export async function listWorkflows(token: string, owner: string, repo: string) {
-  const octokit = createGitHubClient(token)
+export async function listWorkflows(
+  token: string,
+  owner: string,
+  repo: string
+) {
+  const octokit = createGitHubClient(token);
   const response = await octokit.actions.listWorkflowRunsForRepo({
     owner,
     repo,
     per_page: 10,
-  })
+  });
 
   return response.data.workflow_runs.map((run) => ({
     id: run.id,
@@ -139,15 +171,15 @@ export async function listWorkflows(token: string, owner: string, repo: string) 
     created_at: run.created_at,
     updated_at: run.updated_at,
     html_url: run.html_url,
-  }))
+  }));
 }
 
 export async function listBranches(token: string, owner: string, repo: string) {
-  const octokit = createGitHubClient(token)
+  const octokit = createGitHubClient(token);
   const response = await octokit.repos.listBranches({
     owner,
     repo,
-  })
+  });
 
   return response.data.map((branch) => ({
     name: branch.name,
@@ -156,7 +188,7 @@ export async function listBranches(token: string, owner: string, repo: string) {
       sha: branch.commit.sha,
       url: branch.commit.url,
     },
-  }))
+  }));
 }
 
 export async function createPullRequest(
@@ -168,7 +200,7 @@ export async function createPullRequest(
   title: string,
   body?: string
 ) {
-  const octokit = createGitHubClient(token)
+  const octokit = createGitHubClient(token);
   const response = await octokit.pulls.create({
     owner,
     repo,
@@ -176,7 +208,7 @@ export async function createPullRequest(
     base,
     title,
     body,
-  })
+  });
 
   return {
     id: response.data.id,
@@ -185,5 +217,5 @@ export async function createPullRequest(
     state: response.data.state,
     html_url: response.data.html_url,
     created_at: response.data.created_at,
-  }
+  };
 }

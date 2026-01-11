@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
@@ -66,6 +66,12 @@ export function UserProfileMenu() {
           <DropdownMenuItem className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             Profile
+          </DropdownMenuItem>
+        </Link>
+        <Link to="/settings">
+          <DropdownMenuItem className="cursor-pointer">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
           </DropdownMenuItem>
         </Link>
         <DropdownMenuSeparator />
