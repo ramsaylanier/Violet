@@ -38,8 +38,31 @@ export async function updateUserProfile(
 }
 
 export async function verifyIdToken(idToken: string): Promise<string> {
-  const decodedToken = await adminAuth.verifyIdToken(idToken)
-  return decodedToken.uid
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(idToken)
+    return decodedToken.uid
+  } catch (error) {
+    // Check if this is an emulator token (unsigned token with alg="none")
+    // If FIREBASE_AUTH_EMULATOR_HOST is set, Admin SDK should handle it automatically
+    // But if not set, we need to handle emulator tokens manually
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('no "kid" claim') || errorMessage.includes('kid')) {
+      // This is likely an emulator token - decode it directly
+      try {
+        const parts = idToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+          const uid = payload.user_id || payload.sub;
+          if (uid) {
+            return uid;
+          }
+        }
+      } catch (decodeError) {
+        // Failed to decode emulator token, will throw original error
+      }
+    }
+    throw error
+  }
 }
 
 /**

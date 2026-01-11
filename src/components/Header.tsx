@@ -1,20 +1,10 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
-import { Home, Menu, X, LogOut, User, Folder } from "lucide-react";
+import { Home, Menu, X, Folder } from "lucide-react";
 import type React from "react";
 import { ProjectSelect } from "@/components/ProjectSelect";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserProfileMenu } from "@/components/UserProfileMenu";
 
 interface NavItem {
   to: string;
@@ -40,32 +30,6 @@ export default function Header() {
   const [groupedExpanded, setGroupedExpanded] = useState<
     Record<string, boolean>
   >({});
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate({ to: "/login" });
-  };
-
-  const getUserInitials = () => {
-    if (user?.displayName) {
-      return user.displayName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
-
-  const getUserName = () => {
-    return user?.displayName || user?.email || "User";
-  };
 
   return (
     <>
@@ -84,45 +48,7 @@ export default function Header() {
           <ProjectSelect />
         </div>
         <div className="ml-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                <Avatar size="sm">
-                  <AvatarImage src={user?.photoURL || undefined} />
-                  <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:block text-sm font-medium">
-                  {getUserName()}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{getUserName()}</p>
-                  {user?.email && (
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                <Link to="profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="cursor-pointer"
-                variant="destructive"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserProfileMenu />
         </div>
       </header>
 

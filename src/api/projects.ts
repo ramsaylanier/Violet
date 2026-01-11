@@ -2,11 +2,11 @@
  * Client-side projects API functions
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from './client.js';
-import type { Project, ProjectSettings } from '@/types';
+import { apiGet, apiPost, apiPut, apiDelete } from "./client.js";
+import type { Project, ProjectSettings } from "@/types";
 
 export async function listProjects(): Promise<Project[]> {
-  return apiGet<Project[]>('/projects');
+  return apiGet<Project[]>("/projects");
 }
 
 export async function createProject(data: {
@@ -15,7 +15,7 @@ export async function createProject(data: {
   settings?: ProjectSettings;
   metadata?: { [key: string]: string };
 }): Promise<Project> {
-  return apiPost<Project>('/projects', data);
+  return apiPost<Project>("/projects", data);
 }
 
 export async function getProject(projectId: string): Promise<Project> {
@@ -29,6 +29,8 @@ export async function updateProject(
   return apiPut<Project>(`/projects/${projectId}`, updates);
 }
 
-export async function deleteProject(projectId: string): Promise<{ success: boolean }> {
+export async function deleteProject(
+  projectId: string
+): Promise<{ success: boolean }> {
   return apiDelete<{ success: boolean }>(`/projects/${projectId}`);
 }

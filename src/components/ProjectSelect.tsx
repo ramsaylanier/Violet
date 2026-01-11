@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxSeparator,
+} from "@/components/ui/combobox";
 import { listProjects } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Project } from "@/types";
@@ -30,6 +31,7 @@ export function ProjectSelect({
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const loadProjects = async () => {
     if (!isAuthenticated) {
@@ -51,46 +53,60 @@ export function ProjectSelect({
     loadProjects();
   }, [isAuthenticated]);
 
-  const handleValueChange = (newValue: string) => {
-    if (newValue === CREATE_NEW_VALUE) {
+  const handleSelect = (selectedValue: string | null) => {
+    if (!selectedValue) return;
+
+    if (selectedValue === CREATE_NEW_VALUE) {
       navigate({ to: "/projects/new" });
-      // Reset select value by not calling onValueChange
+      setOpen(false);
       return;
     }
-    onValueChange?.(newValue);
+    onValueChange?.(selectedValue);
+    setOpen(false);
   };
 
+  // Create items array for Combobox (Base UI will handle filtering automatically)
+  const items = projects.map((p) => p.id);
+
   return (
-    <Select
-      value={value}
-      onValueChange={handleValueChange}
+    <Combobox
+      items={items}
+      value={value || null}
+      onValueChange={handleSelect}
+      open={open}
+      onOpenChange={setOpen}
       disabled={loading || !isAuthenticated}
     >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={loading ? "Loading..." : placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {projects.length === 0 && !loading ? (
-          <SelectItem value="no-projects" disabled>
-            No projects found
-          </SelectItem>
-        ) : (
-          <>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-            <SelectSeparator />
-            <SelectItem value={CREATE_NEW_VALUE}>
-              <div className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                <span>Create new project...</span>
-              </div>
-            </SelectItem>
-          </>
-        )}
-      </SelectContent>
-    </Select>
+      <ComboboxInput
+        placeholder={loading ? "Loading..." : placeholder}
+        className="w-full"
+        disabled={loading || !isAuthenticated}
+      />
+      <ComboboxContent>
+        <ComboboxList>
+          {projects.length === 0 && !loading ? (
+            <ComboboxEmpty>No projects found</ComboboxEmpty>
+          ) : (
+            <>
+              {projects.map((project) => (
+                <Link to={`/projects/${project.id}`} key={project.id}>
+                  <ComboboxItem value={project.id}>{project.name}</ComboboxItem>
+                </Link>
+              ))}
+              <ComboboxSeparator />
+              <ComboboxItem
+                value={CREATE_NEW_VALUE}
+                onSelect={() => handleSelect(CREATE_NEW_VALUE)}
+              >
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  <span>Create new project...</span>
+                </div>
+              </ComboboxItem>
+            </>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }
