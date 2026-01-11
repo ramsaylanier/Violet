@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { ProjectList } from "@/components/ProjectList";
+import { ProjectList } from "@/components/project/ProjectList";
 
 export const Route = createFileRoute("/_app/projects/")({
   component: Projects,

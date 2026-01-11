@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Project, FirebaseProject as FirebaseProjectType, User } from "@/types";
-import { getCurrentUser } from "@/api/auth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   verifyFirebaseProject,
   listFirebaseProjects,
@@ -79,8 +79,7 @@ export function ProjectIntegrations({
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"select" | "manual">("select");
   const [needsAuth, setNeedsAuth] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loadingUser } = useCurrentUser();
 
   const hasFirebaseProject = !!project.firebaseProjectId;
   const isGoogleConnected = !!user?.googleToken;
@@ -103,20 +102,6 @@ export function ProjectIntegrations({
       setLoadingProjects(false);
     }
   };
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("Error loading user:", error);
-      } finally {
-        setLoadingUser(false);
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     if (dialogOpen && dialogMode === "select") {

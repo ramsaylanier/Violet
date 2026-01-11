@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Project, GitHubIssue, User } from "@/types";
-import { getCurrentUser } from "@/api/auth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { listGitHubIssuesAggregated } from "@/api/github";
 
 interface ProjectOverviewProps {
@@ -18,23 +18,11 @@ type IssueWithRepo = GitHubIssue & {
 export function ProjectOverview({ project }: ProjectOverviewProps) {
   const [issues, setIssues] = useState<IssueWithRepo[]>([]);
   const [loadingIssues, setLoadingIssues] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useCurrentUser();
 
   const projectRepos = project.repositories || [];
   const projectGitHubProjects = project.githubProjects || [];
   const isGitHubConnected = !!user?.githubToken;
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("Error loading user:", error);
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     if (isGitHubConnected && projectRepos.length > 0) {

@@ -24,42 +24,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import type { Project, GitHubIssue, GitHubIssueComment, User } from "@/types";
-import { getCurrentUser } from "@/api/auth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { GitHubNotConnectedState } from "@/components/shared/GitHubNotConnectedState";
+import { NoRepositoriesState } from "@/components/shared/NoRepositoriesState";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   listGitHubIssuesAggregated,
-  createGitHubIssue,
-  updateGitHubIssue,
   closeGitHubIssue,
   reopenGitHubIssue,
   addGitHubIssueComment,
   listGitHubIssueComments,
 } from "@/api/github";
+import { CreateIssueDialog } from "./issues/CreateIssueDialog";
+import { IssueFilters } from "./issues/IssueFilters";
+import { IssueList } from "./issues/IssueList";
 
 interface ProjectIssuesProps {
   project: Project;
@@ -75,8 +57,7 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
   const [filteredIssues, setFilteredIssues] = useState<IssueWithRepo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loadingUser } = useCurrentUser();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueWithRepo | null>(
@@ -101,20 +82,6 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
 
   const projectRepos = project.repositories || [];
   const isGitHubConnected = !!user?.githubToken;
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("Error loading user:", error);
-      } finally {
-        setLoadingUser(false);
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     if (isGitHubConnected && projectRepos.length > 0) {
@@ -280,37 +247,16 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
 
   if (!isGitHubConnected) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
-            <div>
-              <h4 className="text-sm font-medium">GitHub not connected</h4>
-              <p className="text-sm text-muted-foreground mt-1">
-                Connect your GitHub account to view and manage issues
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <GitHubNotConnectedState description="Connect your GitHub account to view and manage issues" />
     );
   }
 
   if (projectRepos.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
-            <div>
-              <h4 className="text-sm font-medium">No repositories linked</h4>
-              <p className="text-sm text-muted-foreground mt-1">
-                Link a GitHub repository to view issues
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <NoRepositoriesState
+        isGitHubConnected={isGitHubConnected}
+        description="Link a GitHub repository to view issues"
+      />
     );
   }
 
@@ -330,122 +276,28 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
               Create Issue
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Issue</DialogTitle>
-              <DialogDescription>
-                Create a new issue in one of your linked repositories
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="repo-select">Repository</Label>
-                <Select value={newIssueRepo} onValueChange={setNewIssueRepo}>
-                  <SelectTrigger id="repo-select" className="mt-2">
-                    <SelectValue placeholder="Select repository" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectRepos.map((repo) => (
-                      <SelectItem key={repo.fullName} value={repo.fullName}>
-                        {repo.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="issue-title">Title</Label>
-                <Input
-                  id="issue-title"
-                  value={newIssueTitle}
-                  onChange={(e) => setNewIssueTitle(e.target.value)}
-                  placeholder="Issue title"
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="issue-body">Description (optional)</Label>
-                <Textarea
-                  id="issue-body"
-                  value={newIssueBody}
-                  onChange={(e) => setNewIssueBody(e.target.value)}
-                  placeholder="Issue description"
-                  className="mt-2"
-                  rows={5}
-                />
-              </div>
-              {error && <div className="text-sm text-destructive">{error}</div>}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCreateDialogOpen(false);
-                  setNewIssueRepo("");
-                  setNewIssueTitle("");
-                  setNewIssueBody("");
-                  setError(null);
-                }}
-                disabled={submittingIssue}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleCreateIssue} disabled={submittingIssue}>
-                {submittingIssue ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Issue"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+          <CreateIssueDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            project={project}
+            onSuccess={loadIssues}
+            error={error}
+          />
         </Dialog>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <Label htmlFor="status-filter">Status</Label>
-          <Select
-            value={statusFilter}
-            onValueChange={(v: any) => setStatusFilter(v)}
-          >
-            <SelectTrigger id="status-filter" className="mt-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex-1">
-          <Label htmlFor="repo-filter">Repository</Label>
-          <Select value={repoFilter} onValueChange={setRepoFilter}>
-            <SelectTrigger id="repo-filter" className="mt-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Repositories</SelectItem>
-              {projectRepos.map((repo) => (
-                <SelectItem key={repo.fullName} value={repo.fullName}>
-                  {repo.fullName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <IssueFilters
+        statusFilter={statusFilter}
+        repoFilter={repoFilter}
+        onStatusFilterChange={setStatusFilter}
+        onRepoFilterChange={setRepoFilter}
+        project={project}
+      />
 
       {/* Issues List */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
+        <LoadingState message="Loading issues..." />
       ) : error && !loading ? (
         <Card>
           <CardContent className="py-12">
@@ -458,68 +310,17 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
           </CardContent>
         </Card>
       ) : filteredIssues.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center space-y-4">
-              <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
-              <div>
-                <h4 className="text-sm font-medium">No issues found</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {issues.length === 0
-                    ? "No issues in linked repositories"
-                    : "No issues match the current filters"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />}
+          title="No issues found"
+          description={
+            issues.length === 0
+              ? "No issues in linked repositories"
+              : "No issues match the current filters"
+          }
+        />
       ) : (
-        <div className="space-y-4">
-          {filteredIssues.map((issue) => (
-            <Card
-              key={`${issue.repository.fullName}-${issue.number}`}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleViewIssue(issue)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      {issue.state === "open" ? (
-                        <AlertCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
-                      )}
-                      {issue.title}
-                    </CardTitle>
-                    <CardDescription className="mt-2 flex items-center gap-2">
-                      <span>#{issue.number}</span>
-                      <span>•</span>
-                      <span>{issue.repository.fullName}</span>
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {issue.labels.map((label) => (
-                    <Badge
-                      key={label.id}
-                      variant="secondary"
-                      style={{
-                        backgroundColor: `#${label.color}20`,
-                        color: `#${label.color}`,
-                        borderColor: `#${label.color}`,
-                      }}
-                    >
-                      {label.name}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <IssueList issues={filteredIssues} onIssueClick={handleViewIssue} />
       )}
 
       {/* View Issue Dialog */}

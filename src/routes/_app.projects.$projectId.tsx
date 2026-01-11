@@ -14,12 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Github, Flame, ArrowLeft } from "lucide-react";
-import { ProjectOverview } from "@/components/ProjectOverview";
-import { ProjectSettings } from "@/components/ProjectSettings";
-import { ProjectRepositories } from "@/components/ProjectRepositories";
-import { ProjectIntegrations } from "@/components/ProjectIntegrations";
-import { ProjectIssues } from "@/components/ProjectIssues";
-import { ProjectGitHubProjects } from "@/components/ProjectGitHubProjects";
+import { ProjectOverview } from "@/components/project/ProjectOverview";
+import { ProjectSettings } from "@/components/project/ProjectSettings";
+import { ProjectRepositories } from "@/components/project/ProjectRepositories";
+import { ProjectIntegrations } from "@/components/project/ProjectIntegrations";
+import { ProjectIssues } from "@/components/project/ProjectIssues";
+import { ProjectGitHubProjects } from "@/components/project/ProjectGitHubProjects";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,

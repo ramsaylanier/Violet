@@ -117,11 +117,13 @@ export async function getAuthenticatedUser(token: string): Promise<{
   };
 }
 
-export async function listOrganizations(token: string): Promise<Array<{
-  login: string;
-  id: number;
-  avatar_url?: string;
-}>> {
+export async function listOrganizations(token: string): Promise<
+  Array<{
+    login: string;
+    id: number;
+    avatar_url?: string;
+  }>
+> {
   const octokit = createGitHubClient(token);
   const response = await octokit.orgs.listForAuthenticatedUser({
     per_page: 100,
@@ -911,7 +913,9 @@ export async function createProject(
   const ownerId = ownerData.user?.id || ownerData.organization?.id;
 
   if (!ownerId) {
-    throw new Error(`Owner ${owner} not found as ${ownerType === "user" ? "user" : "organization"}`);
+    throw new Error(
+      `Owner ${owner} not found as ${ownerType === "user" ? "user" : "organization"}`
+    );
   }
 
   const mutation = `

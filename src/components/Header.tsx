@@ -3,8 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Home, Menu, X, Folder } from "lucide-react";
 import type React from "react";
-import { ProjectSelect } from "@/components/ProjectSelect";
-import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { ProjectSelect } from "@/components/project/ProjectSelect";
+import { UserProfileMenu } from "@/components/auth/UserProfileMenu";
 
 interface NavItem {
   to: string;

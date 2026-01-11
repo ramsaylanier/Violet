@@ -63,7 +63,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Project, GitHubRepository, User, GitHubIssue } from "@/types";
-import { getCurrentUser } from "@/api/auth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   listGitHubRepositories,
   createGitHubRepository,
@@ -105,8 +105,7 @@ export function ProjectRepositories({
   const [repoToRemove, setRepoToRemove] = useState<Repository | null>(null);
   const [deleteRepo, setDeleteRepo] = useState(false);
   const [confirmRepoName, setConfirmRepoName] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loadingUser } = useCurrentUser();
   const [repoIssues, setRepoIssues] = useState<Record<string, { issues: GitHubIssue[]; loading: boolean; open: boolean }>>({});
 
   const projectRepos = project.repositories || [];
@@ -124,20 +123,6 @@ export function ProjectRepositories({
       setLoadingRepos(false);
     }
   };
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("Error loading user:", error);
-      } finally {
-        setLoadingUser(false);
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     if (dialogOpen && dialogMode === "add") {
