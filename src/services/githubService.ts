@@ -555,6 +555,35 @@ export async function removeIssueLabels(
   );
 }
 
+export async function getIssueNodeId(
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<string> {
+  const query = `
+    query($owner: String!, $repo: String!, $issueNumber: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issueNumber) {
+          id
+        }
+      }
+    }
+  `;
+
+  const data = await graphqlQuery(token, query, {
+    owner,
+    repo,
+    issueNumber
+  });
+
+  if (!data.repository?.issue?.id) {
+    throw new Error(`Issue #${issueNumber} not found in ${owner}/${repo}`);
+  }
+
+  return data.repository.issue.id;
+}
+
 // GitHub Projects v2 functions (GraphQL)
 
 export async function listProjectsForRepository(

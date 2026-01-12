@@ -19,6 +19,7 @@ import {
   listIssueComments,
   addIssueLabels,
   removeIssueLabels,
+  getIssueNodeId,
   listProjects,
   listProjectsForRepository,
   getProject,
@@ -43,7 +44,6 @@ router.get("/oauth/authorize", async (req, res) => {
   try {
     const userId = await getRequireAuth(req);
     const clientId = process.env.GITHUB_CLIENT_ID;
-    console.log({ clientId });
 
     if (!clientId) {
       return res.status(500).json({ error: "GitHub OAuth not configured" });
@@ -729,6 +729,50 @@ router.delete("/issues/:owner/:repo/:number/labels", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error removing labels from GitHub issue:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/github/issues/:owner/:repo/:number/node-id
+ * Get the GraphQL node ID for a GitHub issue
+ */
+router.get("/issues/:owner/:repo/:number/node-id", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, number } = req.params;
+
+    if (!owner || !repo || !number) {
+      return res
+        .status(400)
+        .json({ error: "Owner, repo, and issue number are required" });
+    }
+
+    const issueNumber = parseInt(number, 10);
+    if (isNaN(issueNumber)) {
+      return res.status(400).json({ error: "Invalid issue number" });
+    }
+
+    const nodeId = await getIssueNodeId(
+      user.githubToken,
+      owner,
+      repo,
+      issueNumber
+    );
+    res.json({ nodeId });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting issue node ID:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error"
     });
