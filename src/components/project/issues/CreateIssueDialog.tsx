@@ -36,7 +36,9 @@ export function CreateIssueDialog({
   onSuccess,
   error: externalError
 }: CreateIssueDialogProps) {
-  const [newIssueRepo, setNewIssueRepo] = useState<string>("");
+  const [newIssueRepo, setNewIssueRepo] = useState<string>(
+    project.repositories?.[0]?.fullName || ""
+  );
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueBody, setNewIssueBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,6 @@ export function CreateIssueDialog({
       });
       // Reset form and close dialog
       onOpenChange(false);
-      setNewIssueRepo("");
       setNewIssueTitle("");
       setNewIssueBody("");
       setError(null);
