@@ -64,7 +64,7 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">(
-    "all"
+    "open"
   );
   const [repoFilter, setRepoFilter] = useState<string>("all");
 
@@ -77,14 +77,7 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
     isLoading: loading,
     error: queryError
   } = useQuery({
-    queryKey: [
-      "github-issues",
-      project.id,
-      projectRepos
-        .map((r) => r.fullName)
-        .sort()
-        .join(",")
-    ],
+    queryKey: ["github-issues", project.id],
     queryFn: async () => {
       if (!user?.githubToken || projectRepos.length === 0) {
         return [];
@@ -243,9 +236,7 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
             onOpenChange={setCreateDialogOpen}
             project={project}
             onSuccess={() => {
-              queryClient.invalidateQueries({
-                queryKey: ["github-issues", project.id]
-              });
+              // Issue is already added to cache via optimistic update
             }}
             error={error}
           />

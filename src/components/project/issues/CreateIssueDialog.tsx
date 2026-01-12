@@ -20,7 +20,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { createGitHubIssue } from "@/api/github";
-import type { Project } from "@/types";
+import type { Project, GitHubIssue } from "@/types";
 
 interface CreateIssueDialogProps {
   open: boolean;
@@ -65,11 +65,44 @@ export function CreateIssueDialog({
         body: newIssueBody || undefined
       });
     },
-    onSuccess: () => {
-      // Invalidate issues query to refetch
-      queryClient.invalidateQueries({
-        queryKey: ["github-issues", project.id]
-      });
+    onSuccess: (createdIssue) => {
+      // Optimistically update the query cache with the new issue
+      const queryKey = ["github-issues", project.id];
+      const existingIssues = queryClient.getQueryData<
+        Array<
+          GitHubIssue & {
+            repository: { owner: string; name: string; fullName: string };
+          }
+        >
+      >(queryKey);
+
+      if (existingIssues) {
+        // Find the repository info
+        const repoInfo = project.repositories?.find(
+          (r) => r.fullName === newIssueRepo
+        );
+
+        if (repoInfo) {
+          // Transform the created issue to match the expected format
+          const issueWithRepo: GitHubIssue & {
+            repository: { owner: string; name: string; fullName: string };
+          } = {
+            ...createdIssue,
+            repository: {
+              owner: repoInfo.owner,
+              name: repoInfo.name,
+              fullName: repoInfo.fullName
+            }
+          };
+
+          // Add the new issue to the beginning of the array
+          queryClient.setQueryData(queryKey, [
+            issueWithRepo,
+            ...existingIssues
+          ]);
+        }
+      }
+
       // Reset form and close dialog
       onOpenChange(false);
       setNewIssueTitle("");
