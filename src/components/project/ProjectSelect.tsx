@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Combobox,
   ComboboxInput,
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/combobox";
 import { listProjects } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Project } from "@/types";
 import { Plus } from "lucide-react";
 
 const CREATE_NEW_VALUE = "__create_new__";
@@ -29,29 +29,16 @@ export function ProjectSelect({
 }: ProjectSelectProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
-  const loadProjects = async () => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const data = await listProjects();
-      setProjects(data);
-    } catch (error) {
-      console.error("Failed to load projects:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProjects();
-  }, [isAuthenticated]);
+  const {
+    data: projects = [],
+    isLoading
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+    enabled: isAuthenticated
+  });
 
   const handleSelect = (selectedValue: string | null) => {
     if (!selectedValue) return;
@@ -75,16 +62,16 @@ export function ProjectSelect({
       onValueChange={handleSelect}
       open={open}
       onOpenChange={setOpen}
-      disabled={loading || !isAuthenticated}
+      disabled={isLoading || !isAuthenticated}
     >
       <ComboboxInput
-        placeholder={loading ? "Loading..." : placeholder}
+        placeholder={isLoading ? "Loading..." : placeholder}
         className="w-full"
-        disabled={loading || !isAuthenticated}
+        disabled={isLoading || !isAuthenticated}
       />
       <ComboboxContent>
         <ComboboxList>
-          {projects.length === 0 && !loading ? (
+          {projects.length === 0 && !isLoading ? (
             <ComboboxEmpty>No projects found</ComboboxEmpty>
           ) : (
             <>

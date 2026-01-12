@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Github,
   ExternalLink,
@@ -93,6 +94,7 @@ export function ProjectRepositories({
   project,
   onUpdate
 }: ProjectRepositoriesProps) {
+  const queryClient = useQueryClient();
   const [availableRepos, setAvailableRepos] = useState<GitHubRepository[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingRepos, setLoadingRepos] = useState(false);
@@ -221,6 +223,8 @@ export function ProjectRepositories({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDialogOpen(false);
       setSelectedRepo("");
       setComboboxOpen(false);
@@ -269,6 +273,8 @@ export function ProjectRepositories({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDialogOpen(false);
       setNewRepoName("");
       setNewRepoDescription("");
@@ -319,6 +325,8 @@ export function ProjectRepositories({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setRemoveDialogOpen(false);
       setRepoToRemove(null);
       setDeleteRepo(false);

@@ -38,8 +38,11 @@ export function ProjectSettings({ project, onUpdate: _onUpdate }: ProjectSetting
   const deleteMutation = useMutation({
     mutationFn: () => deleteProject(project.id),
     onSuccess: () => {
-      // Invalidate and refetch projects list
+      // Invalidate all project-related queries
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      // Remove the specific project from cache
+      queryClient.removeQueries({ queryKey: ["project", project.id] });
       // Navigate back to projects list
       navigate({ to: "/projects" });
     },

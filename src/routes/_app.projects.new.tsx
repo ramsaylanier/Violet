@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,28 @@ export const Route = createFileRoute("/_app/projects/new")({
 function NewProject() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [projectName, setProjectName] = useState("");
   const [createGithubRepo, setCreateGithubRepo] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const createProjectMutation = useMutation({
+    mutationFn: createProject,
+    onSuccess: (project) => {
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      return project;
+    }
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ projectId, updates }: { projectId: string; updates: any }) =>
+      updateProject(projectId, updates),
+    onSuccess: () => {
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    }
+  });
 
   if (!isAuthenticated) {
     return null;
@@ -34,7 +53,6 @@ function NewProject() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
       let githubRepo = null;
@@ -52,39 +70,43 @@ function NewProject() {
           setError(
             `Failed to create GitHub repository: ${githubError?.message || "Unknown error"}`
           );
-          setLoading(false);
           return;
         }
       }
 
-      // Create the project
-      const project = await createProject({
+      // Create the project using mutation
+      const project = await createProjectMutation.mutateAsync({
         name: projectName
       });
 
       // If GitHub repo was created, update the project with repo information
       if (githubRepo) {
         const [owner, repoName] = githubRepo.full_name.split("/");
-        await updateProject(project.id, {
-          repositories: [
-            {
-              owner,
-              name: repoName,
-              fullName: githubRepo.full_name,
-              url: githubRepo.html_url
-            }
-          ]
+        await updateProjectMutation.mutateAsync({
+          projectId: project.id,
+          updates: {
+            repositories: [
+              {
+                owner,
+                name: repoName,
+                fullName: githubRepo.full_name,
+                url: githubRepo.html_url
+              }
+            ]
+          }
         });
       }
 
-      // Navigate to projects list on success
-      navigate({ to: "/projects" });
+      // Navigate to the newly created project
+      navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
     } catch (err: any) {
       console.error("Failed to create project:", err);
       setError(err?.message || "Failed to create project. Please try again.");
-      setLoading(false);
     }
   };
+
+  const loading =
+    createProjectMutation.isPending || updateProjectMutation.isPending;
 
   return (
     <div className="space-y-6">

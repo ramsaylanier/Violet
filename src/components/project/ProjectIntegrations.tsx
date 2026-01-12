@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Flame,
   Plus,
@@ -78,6 +79,7 @@ export function ProjectIntegrations({
   project,
   onUpdate
 }: ProjectIntegrationsProps) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -166,6 +168,8 @@ export function ProjectIntegrations({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDialogOpen(false);
       setFirebaseProjectId("");
       setSelectedProject("");
@@ -198,6 +202,8 @@ export function ProjectIntegrations({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setRemoveDialogOpen(false);
     } catch (err: any) {
       console.error("Failed to remove Firebase project:", err);

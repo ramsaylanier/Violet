@@ -119,9 +119,11 @@ export function ProjectGitHubProjects({
 
       onUpdate(updatedProject);
 
-      // Invalidate repository projects query to refetch and update the list
+      // Invalidate both repository projects and projects list queries
       queryClient.invalidateQueries({
-        queryKey: ["github-repository-projects"]
+        predicate: (query) =>
+          query.queryKey[0] === "github-repository-projects" ||
+          query.queryKey[0] === "projects"
       });
     } catch (err: any) {
       console.error("Failed to link repository project:", err);
@@ -152,6 +154,8 @@ export function ProjectGitHubProjects({
       });
 
       onUpdate(updatedProject);
+      // Invalidate projects list to refetch
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setRemoveDialogOpen(false);
       setProjectToRemove(null);
     } catch (err: any) {
