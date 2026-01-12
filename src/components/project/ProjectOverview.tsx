@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   Github,
@@ -10,7 +11,7 @@ import {
   Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Project, GitHubIssue } from "@/types";
+import type { Project } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { listGitHubIssuesAggregated } from "@/api/github";
 
@@ -18,48 +19,45 @@ interface ProjectOverviewProps {
   project: Project;
 }
 
-type IssueWithRepo = GitHubIssue & {
-  repository: { owner: string; name: string; fullName: string };
-};
-
 export function ProjectOverview({ project }: ProjectOverviewProps) {
-  const [issues, setIssues] = useState<IssueWithRepo[]>([]);
-  const [loadingIssues, setLoadingIssues] = useState(false);
   const { user } = useCurrentUser();
 
   const projectRepos = project.repositories || [];
   const projectGitHubProjects = project.githubProjects || [];
   const isGitHubConnected = !!user?.githubToken;
 
-  useEffect(() => {
-    if (isGitHubConnected && projectRepos.length > 0) {
-      loadIssues();
-    }
-  }, [isGitHubConnected, projectRepos.length]);
-
-  const loadIssues = async () => {
-    if (!user?.githubToken || projectRepos.length === 0) return;
-
-    try {
-      setLoadingIssues(true);
+  // Fetch issues using useQuery
+  const { data: issues = [], isLoading: loadingIssues } = useQuery({
+    queryKey: ["github-issues", project.id],
+    queryFn: async () => {
+      if (!user?.githubToken || projectRepos.length === 0) {
+        return [];
+      }
       const repos = projectRepos.map((r) => ({ owner: r.owner, name: r.name }));
-      const allIssues = await listGitHubIssuesAggregated(repos, "all");
-      setIssues(allIssues);
-    } catch (err: any) {
-      console.error("Failed to load issues:", err);
-    } finally {
-      setLoadingIssues(false);
-    }
-  };
+      return await listGitHubIssuesAggregated(repos, "all");
+    },
+    enabled: isGitHubConnected && projectRepos.length > 0,
+    retry: 1
+  });
 
-  const openIssues = issues.filter((i) => i.state === "open");
-  const closedIssues = issues.filter((i) => i.state === "closed");
-  const recentIssues = issues
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    )
-    .slice(0, 5);
+  const openIssues = useMemo(
+    () => issues.filter((i) => i.state === "open"),
+    [issues]
+  );
+  const closedIssues = useMemo(
+    () => issues.filter((i) => i.state === "closed"),
+    [issues]
+  );
+  const recentIssues = useMemo(
+    () =>
+      issues
+        .sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+        .slice(0, 5),
+    [issues]
+  );
 
   return (
     <div className="space-y-4">

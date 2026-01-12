@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Combobox,
@@ -29,12 +29,10 @@ export function ProjectSelect({
 }: ProjectSelectProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  const {
-    data: projects = [],
-    isLoading
-  } = useQuery({
+  const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: listProjects,
     enabled: isAuthenticated
@@ -54,6 +52,9 @@ export function ProjectSelect({
 
   // Create items array for Combobox (Base UI will handle filtering automatically)
   const items = projects.map((p) => p.id);
+
+  // Preserve current search params when linking to a project
+  const currentSearch = location.search || {};
 
   return (
     <Combobox
@@ -76,7 +77,12 @@ export function ProjectSelect({
           ) : (
             <>
               {projects.map((project) => (
-                <Link to={`/projects/${project.id}`} key={project.id}>
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: project.id }}
+                  search={currentSearch}
+                  key={project.id}
+                >
                   <ComboboxItem value={project.id}>{project.name}</ComboboxItem>
                 </Link>
               ))}
