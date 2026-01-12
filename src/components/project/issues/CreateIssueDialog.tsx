@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import {
   DialogContent,
@@ -38,45 +39,52 @@ export function CreateIssueDialog({
   const [newIssueRepo, setNewIssueRepo] = useState<string>("");
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueBody, setNewIssueBody] = useState("");
-  const [submittingIssue, setSubmittingIssue] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const projectRepos = project.repositories || [];
   const displayError = error || externalError;
 
-  const handleCreateIssue = async () => {
-    if (!newIssueRepo || !newIssueTitle.trim()) {
-      setError("Repository and title are required");
-      return;
-    }
+  const createIssueMutation = useMutation({
+    mutationFn: async () => {
+      if (!newIssueRepo || !newIssueTitle.trim()) {
+        throw new Error("Repository and title are required");
+      }
 
-    const [owner, repo] = newIssueRepo.split("/");
-    if (!owner || !repo) {
-      setError("Invalid repository format");
-      return;
-    }
+      const [owner, repo] = newIssueRepo.split("/");
+      if (!owner || !repo) {
+        throw new Error("Invalid repository format");
+      }
 
-    try {
-      setSubmittingIssue(true);
-      setError(null);
-      await createGitHubIssue({
+      return await createGitHubIssue({
         owner,
         repo,
         title: newIssueTitle,
         body: newIssueBody || undefined
       });
-
+    },
+    onSuccess: () => {
+      // Invalidate issues query to refetch
+      queryClient.invalidateQueries({
+        queryKey: ["github-issues", project.id]
+      });
+      // Reset form and close dialog
       onOpenChange(false);
       setNewIssueRepo("");
       setNewIssueTitle("");
       setNewIssueBody("");
+      setError(null);
       onSuccess();
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to create issue:", err);
       setError(err?.message || "Failed to create issue");
-    } finally {
-      setSubmittingIssue(false);
     }
+  });
+
+  const handleCreateIssue = () => {
+    setError(null);
+    createIssueMutation.mutate();
   };
 
   const handleCancel = () => {
@@ -140,12 +148,15 @@ export function CreateIssueDialog({
         <Button
           variant="outline"
           onClick={handleCancel}
-          disabled={submittingIssue}
+          disabled={createIssueMutation.isPending}
         >
           Cancel
         </Button>
-        <Button onClick={handleCreateIssue} disabled={submittingIssue}>
-          {submittingIssue ? (
+        <Button
+          onClick={handleCreateIssue}
+          disabled={createIssueMutation.isPending}
+        >
+          {createIssueMutation.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Creating...

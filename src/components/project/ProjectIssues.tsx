@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -7,10 +8,7 @@ import {
   Loader2,
   MessageSquare
 } from "lucide-react";
-import {
-  Card,
-  CardContent
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,11 +49,9 @@ type IssueWithRepo = GitHubIssue & {
 };
 
 export function ProjectIssues({ project }: ProjectIssuesProps) {
-  const [issues, setIssues] = useState<IssueWithRepo[]>([]);
-  const [filteredIssues, setFilteredIssues] = useState<IssueWithRepo[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, loadingUser } = useCurrentUser();
+  const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueWithRepo | null>(
@@ -66,7 +62,6 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
 
-
   // Filter state
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">(
     "all"
@@ -76,34 +71,33 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
   const projectRepos = project.repositories || [];
   const isGitHubConnected = !!user?.githubToken;
 
-  useEffect(() => {
-    if (isGitHubConnected && projectRepos.length > 0) {
-      loadIssues();
-    }
-  }, [isGitHubConnected, projectRepos.length]);
-
-  useEffect(() => {
-    filterIssues();
-  }, [issues, statusFilter, repoFilter]);
-
-  const loadIssues = async () => {
-    if (!user?.githubToken || projectRepos.length === 0) return;
-
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch issues using useQuery
+  const {
+    data: issues = [],
+    isLoading: loading,
+    error: queryError
+  } = useQuery({
+    queryKey: [
+      "github-issues",
+      project.id,
+      projectRepos
+        .map((r) => r.fullName)
+        .sort()
+        .join(",")
+    ],
+    queryFn: async () => {
+      if (!user?.githubToken || projectRepos.length === 0) {
+        return [];
+      }
       const repos = projectRepos.map((r) => ({ owner: r.owner, name: r.name }));
-      const allIssues = await listGitHubIssuesAggregated(repos, "all");
-      setIssues(allIssues);
-    } catch (err: any) {
-      console.error("Failed to load issues:", err);
-      setError(err?.message || "Failed to load issues");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return await listGitHubIssuesAggregated(repos, "all");
+    },
+    enabled: isGitHubConnected && projectRepos.length > 0,
+    retry: 1
+  });
 
-  const filterIssues = () => {
+  // Filter issues based on current filters
+  const filteredIssues = useMemo(() => {
     let filtered = [...issues];
 
     if (statusFilter !== "all") {
@@ -116,8 +110,8 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
       );
     }
 
-    setFilteredIssues(filtered);
-  };
+    return filtered;
+  }, [issues, statusFilter, repoFilter]);
 
   const handleViewIssue = async (issue: IssueWithRepo) => {
     setSelectedIssue(issue);
@@ -146,7 +140,10 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
     try {
       const [owner, repo] = issue.repository.fullName.split("/");
       await closeGitHubIssue(owner, repo, issue.number);
-      await loadIssues();
+      // Invalidate and refetch issues
+      queryClient.invalidateQueries({
+        queryKey: ["github-issues", project.id]
+      });
       if (selectedIssue?.id === issue.id) {
         const updated = { ...issue, state: "closed" as const };
         setSelectedIssue(updated);
@@ -161,7 +158,10 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
     try {
       const [owner, repo] = issue.repository.fullName.split("/");
       await reopenGitHubIssue(owner, repo, issue.number);
-      await loadIssues();
+      // Invalidate and refetch issues
+      queryClient.invalidateQueries({
+        queryKey: ["github-issues", project.id]
+      });
       if (selectedIssue?.id === issue.id) {
         const updated = { ...issue, state: "open" as const };
         setSelectedIssue(updated);
@@ -187,6 +187,10 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
       );
       setComments([...comments, comment]);
       setNewComment("");
+      // Invalidate issues query to refresh the list
+      queryClient.invalidateQueries({
+        queryKey: ["github-issues", project.id]
+      });
     } catch (err: any) {
       console.error("Failed to add comment:", err);
       setError(err?.message || "Failed to add comment");
@@ -238,7 +242,11 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
             open={createDialogOpen}
             onOpenChange={setCreateDialogOpen}
             project={project}
-            onSuccess={loadIssues}
+            onSuccess={() => {
+              queryClient.invalidateQueries({
+                queryKey: ["github-issues", project.id]
+              });
+            }}
             error={error}
           />
         </Dialog>
@@ -256,12 +264,24 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
       {/* Issues List */}
       {loading ? (
         <LoadingState message="Loading issues..." />
-      ) : error && !loading ? (
+      ) : (queryError || error) && !loading ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <p className="text-destructive">{error}</p>
-              <Button variant="outline" onClick={loadIssues} className="mt-4">
+              <p className="text-destructive">
+                {queryError instanceof Error
+                  ? queryError.message
+                  : error || "Failed to load issues"}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: ["github-issues", project.id]
+                  });
+                }}
+                className="mt-4"
+              >
                 Retry
               </Button>
             </div>
