@@ -20,7 +20,7 @@ if (!admin.apps.length) {
       ""
     );
     process.env.FIREBASE_AUTH_EMULATOR_HOST = emulatorHost;
-    
+
     // Set Firestore emulator host if not already set
     if (!process.env.FIRESTORE_EMULATOR_HOST) {
       process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
@@ -32,14 +32,14 @@ if (!admin.apps.length) {
     );
 
     admin.initializeApp({
-      projectId,
+      projectId
     });
   } else {
     console.log(
       `🔥 Initializing Firebase Admin for production with service account`
     );
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as ServiceAccount),
+      credential: admin.credential.cert(serviceAccount as ServiceAccount)
     });
   }
 }

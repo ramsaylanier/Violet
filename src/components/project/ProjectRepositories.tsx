@@ -11,14 +11,13 @@ import {
   ChevronDown,
   ChevronRight,
   AlertCircle,
-  CheckCircle2,
+  CheckCircle2
 } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,12 +27,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
+  PopoverTrigger
 } from "@/components/ui/popover";
 import {
   Command,
@@ -41,7 +40,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList,
+  CommandList
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +49,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
+  TooltipTrigger
 } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -60,18 +59,22 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import type { Project, GitHubRepository, User, GitHubIssue } from "@/types";
+import type { Project, GitHubRepository, GitHubIssue } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   listGitHubRepositories,
   createGitHubRepository,
   deleteGitHubRepository,
-  listGitHubIssues,
+  listGitHubIssues
 } from "@/api/github";
 import { updateProject } from "@/api/projects";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 
 interface ProjectRepositoriesProps {
@@ -88,7 +91,7 @@ type Repository = {
 
 export function ProjectRepositories({
   project,
-  onUpdate,
+  onUpdate
 }: ProjectRepositoriesProps) {
   const [availableRepos, setAvailableRepos] = useState<GitHubRepository[]>([]);
   const [loading, setLoading] = useState(false);
@@ -105,8 +108,10 @@ export function ProjectRepositories({
   const [repoToRemove, setRepoToRemove] = useState<Repository | null>(null);
   const [deleteRepo, setDeleteRepo] = useState(false);
   const [confirmRepoName, setConfirmRepoName] = useState("");
-  const { user, loadingUser } = useCurrentUser();
-  const [repoIssues, setRepoIssues] = useState<Record<string, { issues: GitHubIssue[]; loading: boolean; open: boolean }>>({});
+  const { user } = useCurrentUser();
+  const [repoIssues, setRepoIssues] = useState<
+    Record<string, { issues: GitHubIssue[]; loading: boolean; open: boolean }>
+  >({});
 
   const projectRepos = project.repositories || [];
   const isGitHubConnected = !!user?.githubToken;
@@ -136,19 +141,31 @@ export function ProjectRepositories({
     try {
       setRepoIssues((prev) => ({
         ...prev,
-        [fullName]: { issues: prev[fullName]?.issues || [], loading: true, open: prev[fullName]?.open || false },
+        [fullName]: {
+          issues: prev[fullName]?.issues || [],
+          loading: true,
+          open: prev[fullName]?.open || false
+        }
       }));
 
       const issues = await listGitHubIssues(repo.owner, repo.name);
       setRepoIssues((prev) => ({
         ...prev,
-        [fullName]: { issues, loading: false, open: prev[fullName]?.open || false },
+        [fullName]: {
+          issues,
+          loading: false,
+          open: prev[fullName]?.open || false
+        }
       }));
     } catch (err: any) {
       console.error(`Failed to load issues for ${fullName}:`, err);
       setRepoIssues((prev) => ({
         ...prev,
-        [fullName]: { issues: prev[fullName]?.issues || [], loading: false, open: prev[fullName]?.open || false },
+        [fullName]: {
+          issues: prev[fullName]?.issues || [],
+          loading: false,
+          open: prev[fullName]?.open || false
+        }
       }));
     }
   };
@@ -162,8 +179,8 @@ export function ProjectRepositories({
       [fullName]: {
         issues: prev[fullName]?.issues || [],
         loading: prev[fullName]?.loading || false,
-        open: newOpenState,
-      },
+        open: newOpenState
+      }
     }));
 
     if (newOpenState && !currentState?.issues.length) {
@@ -189,7 +206,7 @@ export function ProjectRepositories({
         owner,
         name: repoName,
         fullName: repo.full_name,
-        url: repo.html_url,
+        url: repo.html_url
       };
 
       if (projectRepos.some((r) => r.fullName === newRepo.fullName)) {
@@ -200,7 +217,7 @@ export function ProjectRepositories({
       // Add to existing repositories array
       const updatedRepos = [...projectRepos, newRepo];
       const updatedProject = await updateProject(project.id, {
-        repositories: updatedRepos,
+        repositories: updatedRepos
       });
 
       onUpdate(updatedProject);
@@ -228,7 +245,7 @@ export function ProjectRepositories({
       const newRepo = await createGitHubRepository({
         name: newRepoName,
         description: newRepoDescription || undefined,
-        private: newRepoPrivate,
+        private: newRepoPrivate
       });
 
       const [owner, repoName] = newRepo.full_name.split("/");
@@ -236,7 +253,7 @@ export function ProjectRepositories({
         owner,
         name: repoName,
         fullName: newRepo.full_name,
-        url: newRepo.html_url,
+        url: newRepo.html_url
       };
 
       // Check if repository is already added
@@ -248,7 +265,7 @@ export function ProjectRepositories({
       // Add to existing repositories array
       const updatedRepos = [...projectRepos, repo];
       const updatedProject = await updateProject(project.id, {
-        repositories: updatedRepos,
+        repositories: updatedRepos
       });
 
       onUpdate(updatedProject);
@@ -298,7 +315,7 @@ export function ProjectRepositories({
         (r) => r.fullName !== repoToRemove.fullName
       );
       const updatedProject = await updateProject(project.id, {
-        repositories: updatedRepos.length > 0 ? updatedRepos : [],
+        repositories: updatedRepos.length > 0 ? updatedRepos : []
       });
 
       onUpdate(updatedProject);
@@ -651,30 +668,33 @@ export function ProjectRepositories({
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {repoIssues[repo.fullName]?.issues.slice(0, 5).map((issue) => (
-                            <div
-                              key={issue.id}
-                              className="flex items-center gap-2 p-2 bg-muted rounded-md hover:bg-muted/80"
-                            >
-                              {issue.state === "open" ? (
-                                <AlertCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
-                              ) : (
-                                <CheckCircle2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              )}
-                              <a
-                                href={issue.html_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm flex-1 hover:underline truncate"
-                                onClick={(e) => e.stopPropagation()}
+                          {repoIssues[repo.fullName]?.issues
+                            .slice(0, 5)
+                            .map((issue) => (
+                              <div
+                                key={issue.id}
+                                className="flex items-center gap-2 p-2 bg-muted rounded-md hover:bg-muted/80"
                               >
-                                #{issue.number} {issue.title}
-                              </a>
-                            </div>
-                          ))}
+                                {issue.state === "open" ? (
+                                  <AlertCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                ) : (
+                                  <CheckCircle2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                )}
+                                <a
+                                  href={issue.html_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm flex-1 hover:underline truncate"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  #{issue.number} {issue.title}
+                                </a>
+                              </div>
+                            ))}
                           {repoIssues[repo.fullName]?.issues.length > 5 && (
                             <div className="text-xs text-muted-foreground text-center py-1">
-                              +{repoIssues[repo.fullName].issues.length - 5} more issues
+                              +{repoIssues[repo.fullName].issues.length - 5}{" "}
+                              more issues
                             </div>
                           )}
                           <a

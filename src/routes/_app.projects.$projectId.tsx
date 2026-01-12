@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useSearch
+} from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProject } from "@/api/projects";
 import type { Project } from "@/types";
@@ -8,7 +13,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +30,9 @@ export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      tab: (search.tab as string) || undefined,
+      tab: (search.tab as string) || undefined
     };
-  },
+  }
 });
 
 function ProjectView() {
@@ -38,11 +43,16 @@ function ProjectView() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const validTabs = ["overview", "repositories", "issues", "integrations", "settings"];
-  const currentTab = (search.tab && validTabs.includes(search.tab)) 
-    ? search.tab 
-    : "overview";
+
+  const validTabs = [
+    "overview",
+    "repositories",
+    "issues",
+    "integrations",
+    "settings"
+  ];
+  const currentTab =
+    search.tab && validTabs.includes(search.tab) ? search.tab : "overview";
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -138,14 +148,14 @@ function ProjectView() {
         </div>
       </div>
 
-      <Tabs 
-        value={currentTab} 
+      <Tabs
+        value={currentTab}
         onValueChange={(value) => {
           navigate({
             to: "/projects/$projectId",
             params: { projectId },
             search: { tab: value },
-            replace: true,
+            replace: true
           });
         }}
         className="space-y-4"

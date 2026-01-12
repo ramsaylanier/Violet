@@ -1,16 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CheckSquare,
-  Plus,
-  Loader2,
-} from "lucide-react";
+import { CheckSquare, Plus } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
@@ -18,9 +14,7 @@ import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GitHubNotConnectedState } from "@/components/shared/GitHubNotConnectedState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import {
-  listGitHubProjectsForRepository,
-} from "@/api/github";
+import { listGitHubProjectsForRepository } from "@/api/github";
 import { updateProject } from "@/api/projects";
 import type { Project, GitHubProject } from "@/types";
 import { CreateProjectDialog } from "./github-projects/CreateProjectDialog";
@@ -35,7 +29,7 @@ interface ProjectGitHubProjectsProps {
 
 export function ProjectGitHubProjects({
   project,
-  onUpdate,
+  onUpdate
 }: ProjectGitHubProjectsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,14 +51,14 @@ export function ProjectGitHubProjects({
 
   const {
     data: repositoryProjectsData = [],
-    isLoading: loadingRepositoryProjects,
+    isLoading: loadingRepositoryProjects
   } = useQuery({
     queryKey: [
       "github-repository-projects",
       projectRepos
         .map((r) => r.fullName)
         .sort()
-        .join(","),
+        .join(",")
     ],
     queryFn: async () => {
       if (!isGitHubConnected || projectRepos.length === 0) {
@@ -97,7 +91,7 @@ export function ProjectGitHubProjects({
       return uniqueProjects;
     },
     enabled: isGitHubConnected && projectRepos.length > 0,
-    retry: 1,
+    retry: 1
   });
 
   const uniqueRepositoryProjects = repositoryProjectsData;
@@ -115,19 +109,19 @@ export function ProjectGitHubProjects({
         name: projectToLink.title,
         owner,
         ownerType: ownerType as "user" | "org",
-        url: projectToLink.url,
+        url: projectToLink.url
       };
 
       const updatedProjects = [...projectGitHubProjects, projectData];
       const updatedProject = await updateProject(project.id, {
-        githubProjects: updatedProjects,
+        githubProjects: updatedProjects
       });
 
       onUpdate(updatedProject);
 
       // Invalidate repository projects query to refetch and update the list
       queryClient.invalidateQueries({
-        queryKey: ["github-repository-projects"],
+        queryKey: ["github-repository-projects"]
       });
     } catch (err: any) {
       console.error("Failed to link repository project:", err);
@@ -154,7 +148,7 @@ export function ProjectGitHubProjects({
         (p) => p.projectId !== projectToRemove.projectId
       );
       const updatedProject = await updateProject(project.id, {
-        githubProjects: updatedProjects.length > 0 ? updatedProjects : [],
+        githubProjects: updatedProjects.length > 0 ? updatedProjects : []
       });
 
       onUpdate(updatedProject);
@@ -172,7 +166,7 @@ export function ProjectGitHubProjects({
   const handleCreateSuccess = (updatedProject: Project) => {
     onUpdate(updatedProject);
     queryClient.invalidateQueries({
-      queryKey: ["github-repository-projects"],
+      queryKey: ["github-repository-projects"]
     });
   };
 
@@ -240,7 +234,9 @@ export function ProjectGitHubProjects({
             </div>
           ) : (
             <EmptyState
-              icon={<CheckSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />}
+              icon={
+                <CheckSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              }
               title="No GitHub Projects linked"
               description="Link a GitHub Project to enable project management features"
             />

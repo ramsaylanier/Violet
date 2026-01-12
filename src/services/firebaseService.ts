@@ -5,9 +5,9 @@ import type { FirebaseProject } from "@/types";
 // This service handles Firestore, Storage, and Hosting setup for existing projects
 
 export async function initializeFirestore(
-  projectId: string,
-  databaseId = "(default)",
-  location = "us-central1"
+  _projectId: string,
+  _databaseId = "(default)",
+  _location = "us-central1"
 ) {
   // Firestore is automatically initialized when the project is created
   // This function can be used to verify or configure settings
@@ -22,7 +22,7 @@ export async function initializeFirestore(
   }
 }
 
-export async function setupStorage(projectId: string) {
+export async function setupStorage(_projectId: string) {
   // Storage bucket is automatically created with the project
   // This can be used to verify or configure bucket settings
   try {
@@ -40,7 +40,7 @@ export async function setupHosting(projectId: string, siteId?: string) {
     return {
       success: true,
       message: "Hosting configuration pending",
-      siteId: siteId || projectId,
+      siteId: siteId || projectId
     };
   } catch (error) {
     throw new Error(`Failed to setup Hosting: ${error}`);
@@ -105,8 +105,7 @@ export async function verifyFirebaseProject(
   } catch (error) {
     return {
       valid: false,
-      error:
-        error instanceof Error ? error.message : "Failed to verify project",
+      error: error instanceof Error ? error.message : "Failed to verify project"
     };
   }
 }
@@ -130,7 +129,7 @@ export async function getFirebaseProjectMetadata(
     // Future: Call Firebase Management API: GET https://firebase.googleapis.com/v1beta1/projects/{projectId}
 
     return {
-      projectId,
+      projectId
       // Additional fields would come from Firebase Management API
     };
   } catch (error) {
@@ -152,8 +151,8 @@ export async function listFirebaseProjects(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+          "Content-Type": "application/json"
+        }
       }
     );
 
@@ -162,7 +161,7 @@ export async function listFirebaseProjects(
       console.error("Firebase API error:", {
         status: response.status,
         statusText: response.statusText,
-        errorData,
+        errorData
       });
       throw new Error(
         errorData.error?.message ||
@@ -171,7 +170,6 @@ export async function listFirebaseProjects(
     }
 
     const data = await response.json();
-    
 
     // The API returns projects in the format:
     // { results: [{ name: "projects/project-id", projectId: "project-id", displayName: "...", ... }] }
@@ -187,7 +185,7 @@ export async function listFirebaseProjects(
         projectNumber: project.projectNumber,
         displayName: project.displayName,
         name: project.name,
-        resources: project.resources,
+        resources: project.resources
       } as FirebaseProject;
     });
   } catch (error) {

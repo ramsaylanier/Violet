@@ -4,7 +4,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
 export const Route = createRootRoute({
-  component: RootComponent,
+  component: RootComponent
 });
 
 function RootComponent() {
@@ -14,13 +14,13 @@ function RootComponent() {
       {import.meta.env.DEV && (
         <TanStackDevtools
           config={{
-            position: "bottom-right",
+            position: "bottom-right"
           }}
           plugins={[
             {
               name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
+              render: <TanStackRouterDevtoolsPanel />
+            }
           ]}
         />
       )}

@@ -2,7 +2,7 @@ import {
   createFileRoute,
   Navigate,
   useLocation,
-  useSearch,
+  useSearch
 } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -15,7 +15,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,9 +27,9 @@ export const Route = createFileRoute("/_app/settings")({
       github_connected: (search.github_connected as string) || undefined,
       github_error: (search.github_error as string) || undefined,
       google_connected: (search.google_connected as string) || undefined,
-      google_error: (search.google_error as string) || undefined,
+      google_error: (search.google_error as string) || undefined
     };
-  },
+  }
 });
 
 function Settings() {
@@ -68,7 +68,7 @@ function Settings() {
     if (search.github_connected) {
       setMessage({
         type: "success",
-        text: "GitHub account connected successfully!",
+        text: "GitHub account connected successfully!"
       });
       // Reload user to get updated githubToken
       getCurrentUser().then(setUser).catch(console.error);
@@ -77,14 +77,14 @@ function Settings() {
     } else if (search.github_error) {
       setMessage({
         type: "error",
-        text: `Failed to connect GitHub: ${search.github_error}`,
+        text: `Failed to connect GitHub: ${search.github_error}`
       });
       // Clear query param
       window.history.replaceState({}, "", location.pathname);
     } else if (search.google_connected) {
       setMessage({
         type: "success",
-        text: "Google account connected successfully!",
+        text: "Google account connected successfully!"
       });
       // Reload user to get updated googleToken
       getCurrentUser().then(setUser).catch(console.error);
@@ -93,7 +93,7 @@ function Settings() {
     } else if (search.google_error) {
       setMessage({
         type: "error",
-        text: `Failed to connect Google: ${search.google_error}`,
+        text: `Failed to connect Google: ${search.google_error}`
       });
       // Clear query param
       window.history.replaceState({}, "", location.pathname);
@@ -103,7 +103,7 @@ function Settings() {
     search.github_error,
     search.google_connected,
     search.google_error,
-    location.pathname,
+    location.pathname
   ]);
 
   const handleConnectGitHub = async () => {
@@ -120,7 +120,7 @@ function Settings() {
         text:
           error instanceof Error
             ? error.message
-            : "Failed to initiate GitHub connection",
+            : "Failed to initiate GitHub connection"
       });
     }
   };
@@ -135,7 +135,7 @@ function Settings() {
       await disconnectGitHub();
       setMessage({
         type: "success",
-        text: "GitHub account disconnected successfully.",
+        text: "GitHub account disconnected successfully."
       });
       // Reload user to get updated status
       const userData = await getCurrentUser();
@@ -146,7 +146,7 @@ function Settings() {
         text:
           error instanceof Error
             ? error.message
-            : "Failed to disconnect GitHub account",
+            : "Failed to disconnect GitHub account"
       });
     } finally {
       setDisconnecting(false);
@@ -167,7 +167,7 @@ function Settings() {
         text:
           error instanceof Error
             ? error.message
-            : "Failed to initiate Google connection",
+            : "Failed to initiate Google connection"
       });
     }
   };
@@ -182,7 +182,7 @@ function Settings() {
       await disconnectGoogle();
       setMessage({
         type: "success",
-        text: "Google account disconnected successfully.",
+        text: "Google account disconnected successfully."
       });
       // Reload user to get updated status
       const userData = await getCurrentUser();
@@ -193,7 +193,7 @@ function Settings() {
         text:
           error instanceof Error
             ? error.message
-            : "Failed to disconnect Google account",
+            : "Failed to disconnect Google account"
       });
     } finally {
       setDisconnectingGoogle(false);

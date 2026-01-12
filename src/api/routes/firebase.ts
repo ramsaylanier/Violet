@@ -11,7 +11,7 @@ import {
   setupHosting,
   createFirestoreCollection,
   verifyFirebaseProject,
-  getFirebaseProjectMetadata,
+  getFirebaseProjectMetadata
 } from "@/services/firebaseService";
 import { getUserProfile, updateUserProfile } from "@/services/authService";
 
@@ -38,7 +38,7 @@ router.post("/initialize-firestore", async (req, res) => {
     }
     console.error("Error initializing Firestore:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -60,7 +60,7 @@ router.post("/setup-storage", async (req, res) => {
     }
     console.error("Error setting up Storage:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -82,7 +82,7 @@ router.post("/setup-hosting", async (req, res) => {
     }
     console.error("Error setting up Hosting:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -112,7 +112,7 @@ router.post("/create-firestore-collection", async (req, res) => {
     }
     console.error("Error creating Firestore collection:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -141,7 +141,7 @@ router.get("/projects/:projectId", async (req, res) => {
     }
     console.error("Error getting Firebase project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -170,7 +170,7 @@ router.post("/projects/:projectId/verify", async (req, res) => {
     }
     console.error("Error verifying Firebase project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -196,7 +196,7 @@ router.get("/oauth/authorize", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 600000, // 10 minutes
+      maxAge: 600000 // 10 minutes
     });
 
     const redirectUri =
@@ -220,7 +220,7 @@ router.get("/oauth/authorize", async (req, res) => {
     }
     console.error("Error initiating Google OAuth:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -262,15 +262,15 @@ router.get("/oauth/callback", async (req, res) => {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/x-www-form-urlencoded"
       },
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
         code,
         redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }),
+        grant_type: "authorization_code"
+      })
     });
 
     if (!tokenResponse.ok) {
@@ -324,7 +324,7 @@ router.post("/oauth/disconnect", async (req, res) => {
     // Remove the token from user profile using FieldValue.delete()
     const { FieldValue } = await import("firebase-admin/firestore");
     await adminDb.collection("users").doc(userId).update({
-      googleToken: FieldValue.delete(),
+      googleToken: FieldValue.delete()
     });
 
     res.json({ success: true });
@@ -334,7 +334,7 @@ router.post("/oauth/disconnect", async (req, res) => {
     }
     console.error("Error disconnecting Google account:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -353,7 +353,7 @@ router.get("/projects", async (req, res) => {
     if (!userProfile || !userProfile.googleToken) {
       return res.status(401).json({
         error: "Google account not connected",
-        needsAuth: true,
+        needsAuth: true
       });
     }
 
@@ -367,7 +367,7 @@ router.get("/projects", async (req, res) => {
     }
     console.error("Error listing Firebase projects:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });

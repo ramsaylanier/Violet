@@ -16,20 +16,17 @@ const navItems: NavItem[] = [
   {
     to: "/",
     label: "Home",
-    icon: Home,
+    icon: Home
   },
   {
     to: "/projects",
     label: "Projects",
-    icon: Folder,
-  },
+    icon: Folder
+  }
 ];
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const [groupedExpanded, setGroupedExpanded] = useState<
-    Record<string, boolean>
-  >({});
 
   return (
     <>
@@ -79,7 +76,7 @@ export default function Header() {
                 className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
                 activeProps={{
                   className:
-                    "flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2",
+                    "flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2"
                 }}
               >
                 <Icon size={20} />

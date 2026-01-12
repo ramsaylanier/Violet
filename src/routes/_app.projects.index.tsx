@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProjectList } from "@/components/project/ProjectList";
 
 export const Route = createFileRoute("/_app/projects/")({
-  component: Projects,
+  component: Projects
 });
 
 function Projects() {

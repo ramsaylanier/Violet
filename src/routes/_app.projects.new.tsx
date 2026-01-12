@@ -10,13 +10,13 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { createProject, updateProject } from "@/api/projects";
 import { createGitHubRepository } from "@/api/github";
 
 export const Route = createFileRoute("/_app/projects/new")({
-  component: NewProject,
+  component: NewProject
 });
 
 function NewProject() {
@@ -45,7 +45,7 @@ function NewProject() {
           githubRepo = await createGitHubRepository({
             name: projectName,
             description: `Repository for ${projectName}`,
-            private: false,
+            private: false
           });
         } catch (githubError: any) {
           console.error("Failed to create GitHub repository:", githubError);
@@ -59,7 +59,7 @@ function NewProject() {
 
       // Create the project
       const project = await createProject({
-        name: projectName,
+        name: projectName
       });
 
       // If GitHub repo was created, update the project with repo information
@@ -71,9 +71,9 @@ function NewProject() {
               owner,
               name: repoName,
               fullName: githubRepo.full_name,
-              url: githubRepo.html_url,
-            },
-          ],
+              url: githubRepo.html_url
+            }
+          ]
         });
       }
 

@@ -5,7 +5,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 
 export function DefaultCatchBoundary({ error, reset }: ErrorComponentProps) {

@@ -7,7 +7,7 @@ import {
   verifyIdToken,
   getUserProfile,
   createUserProfile,
-  updateUserProfile,
+  updateUserProfile
 } from "@/services/authService";
 import { SESSION_COOKIE_NAME, COOKIE_MAX_AGE, setCookie } from "@/lib/cookies";
 
@@ -26,7 +26,7 @@ async function getUserIdFromRequest(
     try {
       const userId = await verifyIdToken(idToken);
       return userId;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -82,7 +82,7 @@ router.post("/session", async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: COOKIE_MAX_AGE,
+      maxAge: COOKIE_MAX_AGE
     });
 
     res.setHeader("Set-Cookie", cookieValue);
@@ -90,7 +90,7 @@ router.post("/session", async (req, res) => {
   } catch (error) {
     console.error("Error creating session:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -117,7 +117,7 @@ router.get("/user", async (req, res) => {
   } catch (error) {
     console.error("Error getting user:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -145,7 +145,7 @@ router.post("/update", async (req, res) => {
     }
     console.error("Error updating user:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -161,7 +161,7 @@ router.post("/logout", async (req, res) => {
   } catch (error) {
     console.error("Error logging out:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });

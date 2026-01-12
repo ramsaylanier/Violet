@@ -6,7 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithPopup
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signInWithGoogle,
-        logout,
+        logout
       }}
     >
       {children}

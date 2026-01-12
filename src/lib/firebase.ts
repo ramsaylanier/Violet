@@ -12,7 +12,7 @@ const firebaseConfig = {
     env.VITE_FIREBASE_STORAGE_BUCKET || env.FIREBASE_STORAGE_BUCKET,
   messagingSenderId:
     env.VITE_FIREBASE_MESSAGING_SENDER_ID || env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID || env.FIREBASE_APP_ID,
+  appId: env.VITE_FIREBASE_APP_ID || env.FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -29,7 +29,7 @@ if (env.MODE === "development") {
   if (useEmulator) {
     console.log("🔥 Connecting to Firebase Auth Emulator...");
     connectAuthEmulator(auth, "http://localhost:9099", {
-      disableWarnings: true,
+      disableWarnings: true
     });
   }
 }

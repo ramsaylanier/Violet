@@ -6,9 +6,9 @@ export const Route = createFileRoute("/signup")({
   component: Signup,
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
     return {
-      redirect: search.redirect ? (search.redirect as string) : undefined,
+      redirect: search.redirect ? (search.redirect as string) : undefined
     };
-  },
+  }
 });
 
 function Signup() {

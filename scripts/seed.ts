@@ -18,7 +18,7 @@ if (!admin.apps.length) {
     process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
     admin.initializeApp({
-      projectId: "violet-project-management",
+      projectId: "violet-project-management"
     });
     console.log("Using Firebase Emulators");
   } else {
@@ -29,7 +29,7 @@ if (!admin.apps.length) {
     );
 
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount)
     });
     console.log("Using Production Firebase");
   }
@@ -60,7 +60,7 @@ async function seedTestUser() {
           email: testEmail,
           password: testPassword,
           displayName: testName,
-          emailVerified: true,
+          emailVerified: true
         });
         console.log(`✓ Created Firebase Auth user: ${user.uid}`);
       } else {
@@ -78,14 +78,14 @@ async function seedTestUser() {
         id: user.uid,
         email: existingData?.email,
         name: existingData?.name,
-        createdAt: existingData?.createdAt?.toDate(),
+        createdAt: existingData?.createdAt?.toDate()
       });
     } else {
       // Create user profile in Firestore
       const userData = {
         email: testEmail,
         name: testName,
-        createdAt: admin.firestore.Timestamp.now(),
+        createdAt: admin.firestore.Timestamp.now()
       };
 
       await adminDb.collection("users").doc(user.uid).set(userData);

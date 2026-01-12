@@ -8,7 +8,7 @@ export function createAppRouter() {
     routeTree,
     defaultPreload: "intent",
     defaultErrorComponent: DefaultCatchBoundary,
-    defaultNotFoundComponent: () => <NotFound />,
+    defaultNotFoundComponent: () => <NotFound />
   });
 
   return router;

@@ -4,13 +4,12 @@ import type {
   GitHubIssue,
   GitHubIssueComment,
   GitHubProject,
-  GitHubProjectItem,
-  GitHubProjectField,
+  GitHubProjectItem
 } from "@/types";
 
 export function createGitHubClient(token: string): Octokit {
   return new Octokit({
-    auth: token,
+    auth: token
   });
 }
 
@@ -24,9 +23,9 @@ async function graphqlQuery(
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
-    body: JSON.stringify({ query, variables }),
+    body: JSON.stringify({ query, variables })
   });
 
   if (!response.ok) {
@@ -54,7 +53,7 @@ export async function createRepository(
       name,
       description,
       private: isPrivate,
-      auto_init: true,
+      auto_init: true
     });
 
     return {
@@ -65,7 +64,7 @@ export async function createRepository(
       private: response.data.private,
       html_url: response.data.html_url,
       created_at: response.data.created_at,
-      updated_at: response.data.updated_at,
+      updated_at: response.data.updated_at
     };
   } catch (error: any) {
     console.error("Error creating GitHub repository:", error);
@@ -75,7 +74,7 @@ export async function createRepository(
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data,
-        headers: error.response.headers,
+        headers: error.response.headers
       });
     }
     throw error;
@@ -88,7 +87,7 @@ export async function listRepositories(
   const octokit = createGitHubClient(token);
   const response = await octokit.repos.listForAuthenticatedUser({
     per_page: 100,
-    sort: "updated",
+    sort: "updated"
   });
 
   return response.data.map((repo) => ({
@@ -99,7 +98,7 @@ export async function listRepositories(
     private: repo.private,
     html_url: repo.html_url,
     created_at: repo.created_at || new Date().toISOString(),
-    updated_at: repo.updated_at || new Date().toISOString(),
+    updated_at: repo.updated_at || new Date().toISOString()
   }));
 }
 
@@ -113,7 +112,7 @@ export async function getAuthenticatedUser(token: string): Promise<{
   return {
     login: response.data.login,
     id: response.data.id,
-    type: response.data.type,
+    type: response.data.type
   };
 }
 
@@ -126,12 +125,12 @@ export async function listOrganizations(token: string): Promise<
 > {
   const octokit = createGitHubClient(token);
   const response = await octokit.orgs.listForAuthenticatedUser({
-    per_page: 100,
+    per_page: 100
   });
   return response.data.map((org) => ({
     login: org.login,
     id: org.id,
-    avatar_url: org.avatar_url,
+    avatar_url: org.avatar_url
   }));
 }
 
@@ -145,7 +144,7 @@ export async function deleteRepository(
     const octokit = createGitHubClient(token);
     await octokit.repos.delete({
       owner,
-      repo,
+      repo
     });
   } catch (error: any) {
     console.error("Error deleting GitHub repository:", error);
@@ -155,7 +154,7 @@ export async function deleteRepository(
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data,
-        headers: error.response.headers,
+        headers: error.response.headers
       });
     }
     throw error;
@@ -176,7 +175,7 @@ export async function createIssue(
     repo,
     title,
     body,
-    labels,
+    labels
   });
 
   return {
@@ -197,7 +196,7 @@ export async function createIssue(
           .map((label) => ({
             id: (label as { id: number }).id,
             name: (label as { name: string }).name,
-            color: (label as { color?: string }).color || "000000",
+            color: (label as { color?: string }).color || "000000"
           }))
       : [],
     created_at: response.data.created_at,
@@ -205,7 +204,7 @@ export async function createIssue(
     assignees: response.data.assignees?.map((assignee) => ({
       id: assignee.id,
       login: assignee.login,
-      avatar_url: assignee.avatar_url,
+      avatar_url: assignee.avatar_url
     })),
     milestone: response.data.milestone
       ? {
@@ -213,7 +212,7 @@ export async function createIssue(
           title: response.data.milestone.title,
           description: response.data.milestone.description ?? undefined,
           due_on: response.data.milestone.due_on ?? null,
-          state: response.data.milestone.state as "open" | "closed",
+          state: response.data.milestone.state as "open" | "closed"
         }
       : null,
     html_url: response.data.html_url,
@@ -221,10 +220,10 @@ export async function createIssue(
       ? {
           id: response.data.user.id,
           login: response.data.user.login,
-          avatar_url: response.data.user.avatar_url,
+          avatar_url: response.data.user.avatar_url
         }
       : undefined,
-    comments: response.data.comments,
+    comments: response.data.comments
   };
 }
 
@@ -239,7 +238,7 @@ export async function listIssues(
     owner,
     repo,
     state,
-    per_page: 100,
+    per_page: 100
   });
 
   return response.data.map((issue) => ({
@@ -260,7 +259,7 @@ export async function listIssues(
           .map((label) => ({
             id: (label as { id: number }).id,
             name: (label as { name: string }).name,
-            color: (label as { color?: string }).color || "000000",
+            color: (label as { color?: string }).color || "000000"
           }))
       : [],
     created_at: issue.created_at,
@@ -268,7 +267,7 @@ export async function listIssues(
     assignees: issue.assignees?.map((assignee) => ({
       id: assignee.id,
       login: assignee.login,
-      avatar_url: assignee.avatar_url,
+      avatar_url: assignee.avatar_url
     })),
     milestone: issue.milestone
       ? {
@@ -276,7 +275,7 @@ export async function listIssues(
           title: issue.milestone.title,
           description: issue.milestone.description ?? undefined,
           due_on: issue.milestone.due_on ?? null,
-          state: issue.milestone.state as "open" | "closed",
+          state: issue.milestone.state as "open" | "closed"
         }
       : null,
     html_url: issue.html_url,
@@ -284,10 +283,10 @@ export async function listIssues(
       ? {
           id: issue.user.id,
           login: issue.user.login,
-          avatar_url: issue.user.avatar_url,
+          avatar_url: issue.user.avatar_url
         }
       : undefined,
-    comments: issue.comments,
+    comments: issue.comments
   }));
 }
 
@@ -300,7 +299,7 @@ export async function listWorkflows(
   const response = await octokit.actions.listWorkflowRunsForRepo({
     owner,
     repo,
-    per_page: 10,
+    per_page: 10
   });
 
   return response.data.workflow_runs.map((run) => ({
@@ -310,7 +309,7 @@ export async function listWorkflows(
     conclusion: run.conclusion,
     created_at: run.created_at,
     updated_at: run.updated_at,
-    html_url: run.html_url,
+    html_url: run.html_url
   }));
 }
 
@@ -318,7 +317,7 @@ export async function listBranches(token: string, owner: string, repo: string) {
   const octokit = createGitHubClient(token);
   const response = await octokit.repos.listBranches({
     owner,
-    repo,
+    repo
   });
 
   return response.data.map((branch) => ({
@@ -326,8 +325,8 @@ export async function listBranches(token: string, owner: string, repo: string) {
     protected: branch.protected,
     commit: {
       sha: branch.commit.sha,
-      url: branch.commit.url,
-    },
+      url: branch.commit.url
+    }
   }));
 }
 
@@ -347,7 +346,7 @@ export async function createPullRequest(
     head,
     base,
     title,
-    body,
+    body
   });
 
   return {
@@ -356,7 +355,7 @@ export async function createPullRequest(
     title: response.data.title,
     state: response.data.state,
     html_url: response.data.html_url,
-    created_at: response.data.created_at,
+    created_at: response.data.created_at
   };
 }
 
@@ -379,7 +378,7 @@ export async function updateIssue(
     owner,
     repo,
     issue_number: issueNumber,
-    ...updates,
+    ...updates
   });
 
   return {
@@ -400,7 +399,7 @@ export async function updateIssue(
           .map((label) => ({
             id: (label as { id: number }).id,
             name: (label as { name: string }).name,
-            color: (label as { color?: string }).color || "000000",
+            color: (label as { color?: string }).color || "000000"
           }))
       : [],
     created_at: response.data.created_at,
@@ -408,7 +407,7 @@ export async function updateIssue(
     assignees: response.data.assignees?.map((assignee) => ({
       id: assignee.id,
       login: assignee.login,
-      avatar_url: assignee.avatar_url,
+      avatar_url: assignee.avatar_url
     })),
     milestone: response.data.milestone
       ? {
@@ -416,7 +415,7 @@ export async function updateIssue(
           title: response.data.milestone.title,
           description: response.data.milestone.description ?? undefined,
           due_on: response.data.milestone.due_on ?? null,
-          state: response.data.milestone.state as "open" | "closed",
+          state: response.data.milestone.state as "open" | "closed"
         }
       : null,
     html_url: response.data.html_url,
@@ -424,10 +423,10 @@ export async function updateIssue(
       ? {
           id: response.data.user.id,
           login: response.data.user.login,
-          avatar_url: response.data.user.avatar_url,
+          avatar_url: response.data.user.avatar_url
         }
       : undefined,
-    comments: response.data.comments,
+    comments: response.data.comments
   };
 }
 
@@ -461,7 +460,7 @@ export async function addIssueComment(
     owner,
     repo,
     issue_number: issueNumber,
-    body,
+    body
   });
 
   return {
@@ -471,15 +470,15 @@ export async function addIssueComment(
       ? {
           id: response.data.user.id,
           login: response.data.user.login,
-          avatar_url: response.data.user.avatar_url,
+          avatar_url: response.data.user.avatar_url
         }
       : {
           id: 0,
-          login: "unknown",
+          login: "unknown"
         },
     created_at: response.data.created_at,
     updated_at: response.data.updated_at,
-    html_url: response.data.html_url,
+    html_url: response.data.html_url
   };
 }
 
@@ -494,7 +493,7 @@ export async function listIssueComments(
     owner,
     repo,
     issue_number: issueNumber,
-    per_page: 100,
+    per_page: 100
   });
 
   return response.data.map((comment) => ({
@@ -504,15 +503,15 @@ export async function listIssueComments(
       ? {
           id: comment.user.id,
           login: comment.user.login,
-          avatar_url: comment.user.avatar_url,
+          avatar_url: comment.user.avatar_url
         }
       : {
           id: 0,
-          login: "unknown",
+          login: "unknown"
         },
     created_at: comment.created_at,
     updated_at: comment.updated_at,
-    html_url: comment.html_url,
+    html_url: comment.html_url
   }));
 }
 
@@ -528,7 +527,7 @@ export async function addIssueLabels(
     owner,
     repo,
     issue_number: issueNumber,
-    labels,
+    labels
   });
 }
 
@@ -547,7 +546,7 @@ export async function removeIssueLabels(
         owner,
         repo,
         issue_number: issueNumber,
-        name: label,
+        name: label
       })
     )
   );
@@ -607,7 +606,7 @@ export async function listProjectsForRepository(
   const data = await graphqlQuery(token, query, {
     owner,
     repo,
-    first: 100,
+    first: 100
   });
 
   const projects = data.repository?.projectsV2?.nodes || [];
@@ -630,15 +629,15 @@ export async function listProjectsForRepository(
           type:
             (project.owner.__typename || "User") === "User"
               ? "User"
-              : "Organization",
+              : "Organization"
         }
       : undefined,
     creator: project.creator
       ? {
           id: project.creator.id,
-          login: project.creator.login,
+          login: project.creator.login
         }
-      : undefined,
+      : undefined
   }));
 }
 
@@ -739,7 +738,7 @@ export async function listProjects(
 
   const data = await graphqlQuery(token, query, {
     login: owner,
-    first: 100,
+    first: 100
   });
 
   const projects =
@@ -764,15 +763,15 @@ export async function listProjects(
           type:
             (project.owner.__typename || "User") === "User"
               ? "User"
-              : "Organization",
+              : "Organization"
         }
       : undefined,
     creator: project.creator
       ? {
           id: project.creator.id,
-          login: project.creator.login,
+          login: project.creator.login
         }
-      : undefined,
+      : undefined
   }));
 }
 
@@ -848,15 +847,15 @@ export async function getProject(
           type:
             (project.owner.__typename || "User") === "User"
               ? "User"
-              : "Organization",
+              : "Organization"
         }
       : undefined,
     creator: project.creator
       ? {
           id: project.creator.id,
-          login: project.creator.login,
+          login: project.creator.login
         }
-      : undefined,
+      : undefined
   };
 }
 
@@ -962,7 +961,7 @@ export async function createProject(
 
   const input: any = {
     ownerId,
-    title,
+    title
   };
 
   if (repositoryId) {
@@ -970,7 +969,7 @@ export async function createProject(
   }
 
   const data = await graphqlQuery(token, mutation, {
-    input,
+    input
   });
 
   const project = data.createProjectV2.projectV2;
@@ -993,15 +992,15 @@ export async function createProject(
           type:
             (project.owner.__typename || "User") === "User"
               ? "User"
-              : "Organization",
+              : "Organization"
         }
       : undefined,
     creator: project.creator
       ? {
           id: project.creator.id,
-          login: project.creator.login,
+          login: project.creator.login
         }
-      : undefined,
+      : undefined
   };
 }
 
@@ -1112,7 +1111,7 @@ export async function listProjectItems(
 
   const data = await graphqlQuery(token, query, {
     id: projectId,
-    first: 100,
+    first: 100
   });
 
   const project = data.node;
@@ -1135,23 +1134,23 @@ export async function listProjectItems(
             ? {
                 name: item.content.repository.name,
                 owner: {
-                  login: item.content.repository.owner.login,
-                },
+                  login: item.content.repository.owner.login
+                }
               }
-            : undefined,
+            : undefined
         }
       : null,
     fieldValues: item.fieldValues?.nodes?.map((fv: any) => ({
       field: {
         id: fv.field.id,
-        name: fv.field.name,
+        name: fv.field.name
       },
       value: fv.text || fv.number || fv.date || null,
       singleSelectOptionId: fv.optionId || null,
-      iterationId: fv.iterationId || null,
+      iterationId: fv.iterationId || null
     })),
     createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+    updatedAt: item.updatedAt
   }));
 }
 
@@ -1177,20 +1176,20 @@ export async function updateProjectItem(
   const input: any = {
     projectId,
     itemId,
-    fieldId,
+    fieldId
   };
 
   if (valueId) {
     input.value = {
-      singleSelectOptionId: valueId,
+      singleSelectOptionId: valueId
     };
   } else if (typeof value === "string") {
     input.value = {
-      text: value,
+      text: value
     };
   } else if (typeof value === "number") {
     input.value = {
-      number: value,
+      number: value
     };
   } else {
     input.value = null;
@@ -1218,8 +1217,8 @@ export async function addProjectItem(
   const data = await graphqlQuery(token, mutation, {
     input: {
       projectId,
-      contentId,
-    },
+      contentId
+    }
   });
 
   // Fetch the full item details

@@ -2,12 +2,12 @@
  * Client-side agent API functions
  */
 
-import { apiPost } from './client.js';
-import type { AgentResponse } from '@/agents/agentExecutor';
+import { apiPost } from "./client.js";
+import type { AgentResponse } from "@/agents/agentExecutor";
 
 export async function chatWithAgent(data: {
   message: string;
   projectId?: string;
 }): Promise<AgentResponse> {
-  return apiPost<AgentResponse>('/agent/chat', data);
+  return apiPost<AgentResponse>("/agent/chat", data);
 }

@@ -17,7 +17,7 @@ export async function apiRequest<T>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(options.headers as Record<string, string>)
   };
 
   // Add Authorization header if token exists
@@ -28,7 +28,7 @@ export async function apiRequest<T>(
   const response = await fetch(url, {
     ...options,
     credentials: "include", // Include cookies in requests
-    headers,
+    headers
   });
 
   if (!response.ok) {
@@ -48,27 +48,33 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
 export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "POST",
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined
   });
 }
 
 export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "PUT",
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined
   });
 }
 
-export async function apiPatch<T>(endpoint: string, data?: unknown): Promise<T> {
+export async function apiPatch<T>(
+  endpoint: string,
+  data?: unknown
+): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "PATCH",
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined
   });
 }
 
-export async function apiDelete<T>(endpoint: string, data?: unknown): Promise<T> {
+export async function apiDelete<T>(
+  endpoint: string,
+  data?: unknown
+): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "DELETE",
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? JSON.stringify(data) : undefined
   });
 }

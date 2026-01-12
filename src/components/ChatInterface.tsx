@@ -32,7 +32,7 @@ export function ChatInterface({ projectId }: ChatInterfaceProps) {
 
     const userMessage: Message = {
       role: "user",
-      content: input,
+      content: input
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -42,20 +42,20 @@ export function ChatInterface({ projectId }: ChatInterfaceProps) {
     try {
       const response = await chatWithAgent({
         message: input,
-        projectId,
+        projectId
       });
 
       const assistantMessage: Message = {
         role: "assistant",
         content: response.message,
-        toolCalls: response.toolCalls,
+        toolCalls: response.toolCalls
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       const errorMessage: Message = {
         role: "assistant",
-        content: `Error: ${error instanceof Error ? error.message : "Failed to get response from agent"}`,
+        content: `Error: ${error instanceof Error ? error.message : "Failed to get response from agent"}`
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {

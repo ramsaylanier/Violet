@@ -1,50 +1,30 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { listProjects, deleteProject } from "@/api/projects";
+import { listProjects } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Github, Flame } from "lucide-react";
-import { useState } from "react";
 
 export function ProjectList() {
   const { isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const {
     data: projects = [],
     isLoading,
-    error,
+    error
   } = useQuery({
     queryKey: ["projects"],
     queryFn: listProjects,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: (projectId: string) => deleteProject(projectId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDeletingId(null);
-    },
-    onError: (error) => {
-      console.error("Failed to delete project:", error);
-      setDeletingId(null);
-    },
-  });
-
-  const handleDelete = (projectId: string, projectName: string) => {
-    setDeletingId(projectId);
-    deleteMutation.mutate(projectId);
-  };
 
   if (isLoading) {
     return (

@@ -28,16 +28,10 @@ import {
   addProjectItem,
   listWorkflows,
   listBranches,
-  createPullRequest,
+  createPullRequest
 } from "@/services/githubService";
 import { getRequireAuth } from "./auth.js";
 import { getUserProfile, updateUserProfile } from "@/services/authService";
-import type {
-  GitHubRepository,
-  GitHubIssue,
-  GitHubProject,
-  GitHubProjectItem,
-} from "@/types";
 
 const router = express.Router();
 
@@ -63,7 +57,7 @@ router.get("/oauth/authorize", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 600000, // 10 minutes
+      maxAge: 600000 // 10 minutes
     });
 
     const redirectUri =
@@ -96,7 +90,7 @@ router.get("/oauth/authorize", async (req, res) => {
     }
     console.error("Error initiating GitHub OAuth:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -141,14 +135,14 @@ router.get("/oauth/callback", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
+          Accept: "application/json"
         },
         body: JSON.stringify({
           client_id: clientId,
           client_secret: clientSecret,
           code,
-          redirect_uri: redirectUri,
-        }),
+          redirect_uri: redirectUri
+        })
       }
     );
 
@@ -201,7 +195,7 @@ router.post("/oauth/disconnect", async (req, res) => {
 
     // Use FieldValue.delete() to properly remove the field
     await adminDb.collection("users").doc(userId).update({
-      githubToken: FieldValue.delete(),
+      githubToken: FieldValue.delete()
     });
 
     res.json({ success: true });
@@ -211,7 +205,7 @@ router.post("/oauth/disconnect", async (req, res) => {
     }
     console.error("Error disconnecting GitHub:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -232,7 +226,7 @@ router.post("/repositories", async (req, res) => {
     const {
       name,
       description,
-      private: isPrivate,
+      private: isPrivate
     } = req.body as {
       name: string;
       description?: string;
@@ -252,7 +246,7 @@ router.post("/repositories", async (req, res) => {
     }
     console.error("Error creating GitHub repository:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -278,7 +272,7 @@ router.get("/user", async (req, res) => {
     }
     console.error("Error getting authenticated user:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -304,7 +298,7 @@ router.get("/organizations", async (req, res) => {
     }
     console.error("Error listing organizations:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -332,7 +326,7 @@ router.get("/repositories", async (req, res) => {
     }
     console.error("Error listing GitHub repositories:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -369,7 +363,7 @@ router.get("/repositories/:owner/:repo/id", async (req, res) => {
     }
     console.error("Error getting repository ID:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -403,7 +397,7 @@ router.delete("/repositories/:owner/:repo", async (req, res) => {
     }
     console.error("Error deleting GitHub repository:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -436,7 +430,7 @@ router.post("/issues", async (req, res) => {
     }
     console.error("Error creating GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -464,7 +458,7 @@ router.get("/issues", async (req, res) => {
     }
     console.error("Error listing GitHub issues:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -515,7 +509,7 @@ router.patch("/issues/:owner/:repo/:number", async (req, res) => {
     }
     console.error("Error updating GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -547,7 +541,7 @@ router.post("/issues/:owner/:repo/:number/close", async (req, res) => {
     }
     console.error("Error closing GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -579,7 +573,7 @@ router.post("/issues/:owner/:repo/:number/reopen", async (req, res) => {
     }
     console.error("Error reopening GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -623,7 +617,7 @@ router.post("/issues/:owner/:repo/:number/comments", async (req, res) => {
     }
     console.error("Error adding comment to GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -660,7 +654,7 @@ router.get("/issues/:owner/:repo/:number/comments", async (req, res) => {
     }
     console.error("Error listing GitHub issue comments:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -698,7 +692,7 @@ router.post("/issues/:owner/:repo/:number/labels", async (req, res) => {
     }
     console.error("Error adding labels to GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -736,7 +730,7 @@ router.delete("/issues/:owner/:repo/:number/labels", async (req, res) => {
     }
     console.error("Error removing labels from GitHub issue:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -785,8 +779,8 @@ router.get("/issues/aggregated", async (req, res) => {
             repository: {
               owner: repo.owner,
               name: repo.name,
-              fullName: `${repo.owner}/${repo.name}`,
-            },
+              fullName: `${repo.owner}/${repo.name}`
+            }
           }))
         );
       } catch (error) {
@@ -805,7 +799,7 @@ router.get("/issues/aggregated", async (req, res) => {
     }
     console.error("Error aggregating GitHub issues:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -833,7 +827,7 @@ router.get("/workflows", async (req, res) => {
     }
     console.error("Error listing GitHub workflows:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -861,7 +855,7 @@ router.get("/branches", async (req, res) => {
     }
     console.error("Error listing GitHub branches:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -902,7 +896,7 @@ router.get("/projects", async (req, res) => {
     }
     console.error("Error listing GitHub projects:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -940,7 +934,7 @@ router.get("/repositories/:owner/:repo/projects", async (req, res) => {
     }
     console.error("Error listing GitHub projects for repository:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -968,7 +962,7 @@ router.get("/projects/:projectId", async (req, res) => {
     }
     console.error("Error getting GitHub project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -992,7 +986,7 @@ router.post("/projects", async (req, res) => {
       title,
       body,
       public: publicProject,
-      repositoryId,
+      repositoryId
     } = req.body as {
       owner: string;
       ownerType?: "user" | "org";
@@ -1022,7 +1016,7 @@ router.post("/projects", async (req, res) => {
     }
     console.error("Error creating GitHub project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -1050,7 +1044,7 @@ router.get("/projects/:projectId/items", async (req, res) => {
     }
     console.error("Error listing GitHub project items:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -1094,7 +1088,7 @@ router.patch("/projects/:projectId/items/:itemId", async (req, res) => {
     }
     console.error("Error updating GitHub project item:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -1127,7 +1121,7 @@ router.post("/projects/:projectId/items", async (req, res) => {
     }
     console.error("Error adding item to GitHub project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -1170,7 +1164,7 @@ router.post("/pull-requests", async (req, res) => {
     }
     console.error("Error creating GitHub pull request:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });

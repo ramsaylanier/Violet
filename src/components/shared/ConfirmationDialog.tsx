@@ -7,7 +7,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 
@@ -34,7 +34,7 @@ export function ConfirmationDialog({
   onConfirm,
   loading = false,
   variant = "default",
-  children,
+  children
 }: ConfirmationDialogProps) {
   const isDestructive = variant === "destructive";
 
@@ -49,7 +49,9 @@ export function ConfirmationDialog({
         </AlertDialogHeader>
         {children && <div className="space-y-4 py-4">{children}</div>}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>
+            {cancelLabel}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={loading}

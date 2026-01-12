@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { Calendar, Github, Flame, ExternalLink, AlertCircle, CheckCircle2, CheckSquare, Loader2 } from "lucide-react";
+import {
+  Calendar,
+  Github,
+  Flame,
+  ExternalLink,
+  AlertCircle,
+  CheckCircle2,
+  CheckSquare,
+  Loader2
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import type { Project, GitHubIssue, User } from "@/types";
+import type { Project, GitHubIssue } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { listGitHubIssuesAggregated } from "@/api/github";
 
@@ -48,7 +55,10 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
   const openIssues = issues.filter((i) => i.state === "open");
   const closedIssues = issues.filter((i) => i.state === "closed");
   const recentIssues = issues
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    )
     .slice(0, 5);
 
   return (
@@ -169,14 +179,20 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-2xl font-bold">{issues.length}</div>
-                    <div className="text-sm text-muted-foreground">Total Issues</div>
+                    <div className="text-sm text-muted-foreground">
+                      Total Issues
+                    </div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-green-600">{openIssues.length}</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {openIssues.length}
+                    </div>
                     <div className="text-sm text-muted-foreground">Open</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-muted-foreground">{closedIssues.length}</div>
+                    <div className="text-2xl font-bold text-muted-foreground">
+                      {closedIssues.length}
+                    </div>
                     <div className="text-sm text-muted-foreground">Closed</div>
                   </div>
                 </div>

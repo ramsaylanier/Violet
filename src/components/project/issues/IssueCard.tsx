@@ -4,7 +4,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { GitHubIssue } from "@/types";
@@ -50,7 +50,7 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
               style={{
                 backgroundColor: `#${label.color}20`,
                 color: `#${label.color}`,
-                borderColor: `#${label.color}`,
+                borderColor: `#${label.color}`
               }}
             >
               {label.name}

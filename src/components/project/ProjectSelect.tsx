@@ -7,7 +7,7 @@ import {
   ComboboxList,
   ComboboxItem,
   ComboboxEmpty,
-  ComboboxSeparator,
+  ComboboxSeparator
 } from "@/components/ui/combobox";
 import { listProjects } from "@/api/projects";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,7 +25,7 @@ interface ProjectSelectProps {
 export function ProjectSelect({
   value,
   onValueChange,
-  placeholder = "Select a project...",
+  placeholder = "Select a project..."
 }: ProjectSelectProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();

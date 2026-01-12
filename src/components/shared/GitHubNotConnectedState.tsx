@@ -6,7 +6,7 @@ interface GitHubNotConnectedStateProps {
 }
 
 export function GitHubNotConnectedState({
-  description = "Connect your GitHub account to get started",
+  description = "Connect your GitHub account to get started"
 }: GitHubNotConnectedStateProps) {
   return (
     <EmptyState

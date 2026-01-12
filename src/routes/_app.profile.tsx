@@ -5,11 +5,11 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_app/profile")({
-  component: Profile,
+  component: Profile
 });
 
 function Profile() {

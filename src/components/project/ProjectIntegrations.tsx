@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Flame, Plus, Loader2, Trash2, ExternalLink, ChevronsUpDown, Check, Link as LinkIcon } from "lucide-react";
+import {
+  Flame,
+  Plus,
+  Loader2,
+  Trash2,
+  ExternalLink,
+  ChevronsUpDown,
+  Check,
+  Link as LinkIcon
+} from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +25,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
+  PopoverTrigger
 } from "@/components/ui/popover";
 import {
   Command,
@@ -29,14 +38,14 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList,
+  CommandList
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
+  TooltipTrigger
 } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -46,15 +55,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import type { Project, FirebaseProject as FirebaseProjectType, User } from "@/types";
+import type {
+  Project,
+  FirebaseProject as FirebaseProjectType
+} from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   verifyFirebaseProject,
   listFirebaseProjects,
-  initiateGoogleOAuth,
-  disconnectGoogle,
+  initiateGoogleOAuth
 } from "@/api/firebase";
 import { updateProject } from "@/api/projects";
 
@@ -65,7 +76,7 @@ interface ProjectIntegrationsProps {
 
 export function ProjectIntegrations({
   project,
-  onUpdate,
+  onUpdate
 }: ProjectIntegrationsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,13 +84,15 @@ export function ProjectIntegrations({
   const [firebaseProjectId, setFirebaseProjectId] = useState("");
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState<FirebaseProjectType[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<
+    FirebaseProjectType[]
+  >([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"select" | "manual">("select");
   const [needsAuth, setNeedsAuth] = useState(false);
-  const { user, loadingUser } = useCurrentUser();
+  const { user } = useCurrentUser();
 
   const hasFirebaseProject = !!project.firebaseProjectId;
   const isGoogleConnected = !!user?.googleToken;
@@ -93,7 +106,10 @@ export function ProjectIntegrations({
       setNeedsAuth(false);
     } catch (err: any) {
       console.error("Failed to load Firebase projects:", err);
-      if (err?.message?.includes("Google account not connected") || err?.message?.includes("needsAuth")) {
+      if (
+        err?.message?.includes("Google account not connected") ||
+        err?.message?.includes("needsAuth")
+      ) {
         setNeedsAuth(true);
       } else {
         setError(err?.message || "Failed to load Firebase projects");
@@ -146,7 +162,7 @@ export function ProjectIntegrations({
 
       // Update the project with the Firebase project ID
       const updatedProject = await updateProject(project.id, {
-        firebaseProjectId: projectIdToAdd,
+        firebaseProjectId: projectIdToAdd
       });
 
       onUpdate(updatedProject);
@@ -157,7 +173,8 @@ export function ProjectIntegrations({
     } catch (err: any) {
       console.error("Failed to add Firebase project:", err);
       setError(
-        err?.message || "Failed to add Firebase project. Please check the project ID."
+        err?.message ||
+          "Failed to add Firebase project. Please check the project ID."
       );
     } finally {
       setLoading(false);
@@ -177,7 +194,7 @@ export function ProjectIntegrations({
 
       // Remove the Firebase project ID from the project
       const updatedProject = await updateProject(project.id, {
-        firebaseProjectId: null as any,
+        firebaseProjectId: null as any
       });
 
       onUpdate(updatedProject);
@@ -204,8 +221,8 @@ export function ProjectIntegrations({
                 Link a Firebase project to this Violet project
               </CardDescription>
             </div>
-            {!hasFirebaseProject && (
-              isGoogleConnected ? (
+            {!hasFirebaseProject &&
+              (isGoogleConnected ? (
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -213,199 +230,220 @@ export function ProjectIntegrations({
                       Add Firebase Project
                     </Button>
                   </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Firebase Project</DialogTitle>
-                    <DialogDescription>
-                      Select from your Firebase projects or enter a project ID manually
-                    </DialogDescription>
-                  </DialogHeader>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Firebase Project</DialogTitle>
+                      <DialogDescription>
+                        Select from your Firebase projects or enter a project ID
+                        manually
+                      </DialogDescription>
+                    </DialogHeader>
 
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={dialogMode === "select" ? "default" : "outline"}
-                        onClick={() => {
-                          setDialogMode("select");
-                          setError(null);
-                          if (dialogMode !== "select") {
-                            loadFirebaseProjects();
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={
+                            dialogMode === "select" ? "default" : "outline"
                           }
-                        }}
-                        className="flex-1"
-                      >
-                        Select from List
-                      </Button>
-                      <Button
-                        variant={dialogMode === "manual" ? "default" : "outline"}
-                        onClick={() => {
-                          setDialogMode("manual");
-                          setError(null);
-                        }}
-                        className="flex-1"
-                      >
-                        Enter Manually
-                      </Button>
-                    </div>
-
-                    {dialogMode === "select" ? (
-                      <div className="space-y-2">
-                        <Label>Firebase Project</Label>
-                        {needsAuth ? (
-                          <div className="space-y-4 py-4">
-                            <div className="text-sm text-muted-foreground">
-                              Connect your Google account to view your Firebase projects
-                            </div>
-                            <Button
-                              onClick={handleConnectGoogle}
-                              className="w-full"
-                            >
-                              <LinkIcon className="w-4 h-4 mr-2" />
-                              Connect Google Account
-                            </Button>
-                          </div>
-                        ) : loadingProjects ? (
-                          <div className="flex items-center gap-2 py-4">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm text-muted-foreground">
-                              Loading projects...
-                            </span>
-                          </div>
-                        ) : availableProjects.length === 0 ? (
-                          <div className="text-sm text-muted-foreground py-4">
-                            No Firebase projects found. Make sure you have Firebase projects in your Google account.
-                          </div>
-                        ) : (
-                          <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={comboboxOpen}
-                                className="w-full justify-between"
-                              >
-                                {selectedProject
-                                  ? availableProjects.find(
-                                      (p) => p.projectId === selectedProject
-                                    )?.displayName || availableProjects.find(
-                                      (p) => p.projectId === selectedProject
-                                    )?.projectId || "Select project..."
-                                  : "Select project..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder="Search projects..." />
-                                <CommandList>
-                                  <CommandEmpty>No projects found.</CommandEmpty>
-                                  <CommandGroup>
-                                    {availableProjects.map((proj) => (
-                                      <CommandItem
-                                        key={proj.projectId}
-                                        value={proj.projectId}
-                                        onSelect={() => {
-                                          setSelectedProject(
-                                            proj.projectId === selectedProject
-                                              ? ""
-                                              : proj.projectId
-                                          );
-                                          setComboboxOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={`mr-2 h-4 w-4 ${
-                                            selectedProject === proj.projectId
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          }`}
-                                        />
-                                        <div className="flex flex-col">
-                                          <span>{proj.displayName || proj.projectId}</span>
-                                          <span className="text-xs text-muted-foreground font-mono">
-                                            {proj.projectId}
-                                          </span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label htmlFor="firebase-project-id">
-                          Firebase Project ID
-                        </Label>
-                        <Input
-                          id="firebase-project-id"
-                          placeholder="my-firebase-project"
-                          value={firebaseProjectId}
-                          onChange={(e) => {
-                            setFirebaseProjectId(e.target.value);
+                          onClick={() => {
+                            setDialogMode("select");
                             setError(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !loading) {
-                              handleAddFirebaseProject();
+                            if (dialogMode !== "select") {
+                              loadFirebaseProjects();
                             }
                           }}
-                          disabled={loading}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          The project ID can be found in your Firebase Console
-                        </p>
+                          className="flex-1"
+                        >
+                          Select from List
+                        </Button>
+                        <Button
+                          variant={
+                            dialogMode === "manual" ? "default" : "outline"
+                          }
+                          onClick={() => {
+                            setDialogMode("manual");
+                            setError(null);
+                          }}
+                          className="flex-1"
+                        >
+                          Enter Manually
+                        </Button>
                       </div>
-                    )}
 
-                    {error && (
-                      <div className="text-sm text-destructive">{error}</div>
-                    )}
-                  </div>
-
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setDialogOpen(false);
-                        setFirebaseProjectId("");
-                        setSelectedProject("");
-                        setComboboxOpen(false);
-                        setError(null);
-                        setNeedsAuth(false);
-                      }}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleAddFirebaseProject}
-                      disabled={
-                        loading ||
-                        (dialogMode === "select" && !selectedProject) ||
-                        (dialogMode === "manual" && !firebaseProjectId.trim()) ||
-                        (dialogMode === "select" && needsAuth)
-                      }
-                    >
-                      {validating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Validating...
-                        </>
-                      ) : loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Adding...
-                        </>
+                      {dialogMode === "select" ? (
+                        <div className="space-y-2">
+                          <Label>Firebase Project</Label>
+                          {needsAuth ? (
+                            <div className="space-y-4 py-4">
+                              <div className="text-sm text-muted-foreground">
+                                Connect your Google account to view your
+                                Firebase projects
+                              </div>
+                              <Button
+                                onClick={handleConnectGoogle}
+                                className="w-full"
+                              >
+                                <LinkIcon className="w-4 h-4 mr-2" />
+                                Connect Google Account
+                              </Button>
+                            </div>
+                          ) : loadingProjects ? (
+                            <div className="flex items-center gap-2 py-4">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm text-muted-foreground">
+                                Loading projects...
+                              </span>
+                            </div>
+                          ) : availableProjects.length === 0 ? (
+                            <div className="text-sm text-muted-foreground py-4">
+                              No Firebase projects found. Make sure you have
+                              Firebase projects in your Google account.
+                            </div>
+                          ) : (
+                            <Popover
+                              open={comboboxOpen}
+                              onOpenChange={setComboboxOpen}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={comboboxOpen}
+                                  className="w-full justify-between"
+                                >
+                                  {selectedProject
+                                    ? availableProjects.find(
+                                        (p) => p.projectId === selectedProject
+                                      )?.displayName ||
+                                      availableProjects.find(
+                                        (p) => p.projectId === selectedProject
+                                      )?.projectId ||
+                                      "Select project..."
+                                    : "Select project..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-full p-0"
+                                align="start"
+                              >
+                                <Command>
+                                  <CommandInput placeholder="Search projects..." />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      No projects found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {availableProjects.map((proj) => (
+                                        <CommandItem
+                                          key={proj.projectId}
+                                          value={proj.projectId}
+                                          onSelect={() => {
+                                            setSelectedProject(
+                                              proj.projectId === selectedProject
+                                                ? ""
+                                                : proj.projectId
+                                            );
+                                            setComboboxOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              selectedProject === proj.projectId
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          <div className="flex flex-col">
+                                            <span>
+                                              {proj.displayName ||
+                                                proj.projectId}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                              {proj.projectId}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
                       ) : (
-                        "Add Project"
+                        <div className="space-y-2">
+                          <Label htmlFor="firebase-project-id">
+                            Firebase Project ID
+                          </Label>
+                          <Input
+                            id="firebase-project-id"
+                            placeholder="my-firebase-project"
+                            value={firebaseProjectId}
+                            onChange={(e) => {
+                              setFirebaseProjectId(e.target.value);
+                              setError(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !loading) {
+                                handleAddFirebaseProject();
+                              }
+                            }}
+                            disabled={loading}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            The project ID can be found in your Firebase Console
+                          </p>
+                        </div>
                       )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
+
+                      {error && (
+                        <div className="text-sm text-destructive">{error}</div>
+                      )}
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setDialogOpen(false);
+                          setFirebaseProjectId("");
+                          setSelectedProject("");
+                          setComboboxOpen(false);
+                          setError(null);
+                          setNeedsAuth(false);
+                        }}
+                        disabled={loading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddFirebaseProject}
+                        disabled={
+                          loading ||
+                          (dialogMode === "select" && !selectedProject) ||
+                          (dialogMode === "manual" &&
+                            !firebaseProjectId.trim()) ||
+                          (dialogMode === "select" && needsAuth)
+                        }
+                      >
+                        {validating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Validating...
+                          </>
+                        ) : loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          "Add Project"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
                 </Dialog>
               ) : (
                 <Tooltip>
@@ -430,8 +468,7 @@ export function ProjectIntegrations({
                     </div>
                   </TooltipContent>
                 </Tooltip>
-              )
-            )}
+              ))}
           </div>
         </CardHeader>
         <CardContent>
@@ -459,21 +496,27 @@ export function ProjectIntegrations({
                 </div>
               </div>
 
-              <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+              <AlertDialog
+                open={removeDialogOpen}
+                onOpenChange={setRemoveDialogOpen}
+              >
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Remove Firebase Project</AlertDialogTitle>
                     <AlertDialogDescription>
                       Are you sure you want to remove the Firebase project
-                      integration? This will unlink the Firebase project from this
-                      Violet project, but will not delete the Firebase project itself.
+                      integration? This will unlink the Firebase project from
+                      this Violet project, but will not delete the Firebase
+                      project itself.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   {error && (
                     <div className="text-sm text-destructive">{error}</div>
                   )}
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={loading}>
+                      Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleRemoveFirebaseProject}
                       disabled={loading}

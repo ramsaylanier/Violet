@@ -11,7 +11,7 @@ interface NoRepositoriesStateProps {
 export function NoRepositoriesState({
   isGitHubConnected,
   onAddRepository,
-  description = "Link or create a GitHub repository to get started",
+  description = "Link or create a GitHub repository to get started"
 }: NoRepositoriesStateProps) {
   const action = isGitHubConnected ? (
     <Button onClick={onAddRepository}>

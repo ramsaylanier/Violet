@@ -10,19 +10,19 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-    },
+        changeOrigin: true
+      }
+    }
   },
   plugins: [
     tsConfigPaths({
-      projects: ["./tsconfig.json"],
+      projects: ["./tsconfig.json"]
     }),
     tanstackRouter({
       target: "react",
-      autoCodeSplitting: true,
+      autoCodeSplitting: true
     }),
     viteReact(),
-    devtools(),
-  ],
+    devtools()
+  ]
 });

@@ -3,7 +3,7 @@ import { ChatInterface } from "@/components/ChatInterface";
 import { ProjectList } from "@/components/project/ProjectList";
 
 export const Route = createFileRoute("/_app/")({
-  component: Index,
+  component: Index
 });
 
 function Index() {

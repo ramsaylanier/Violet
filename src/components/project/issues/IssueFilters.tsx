@@ -4,7 +4,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import type { Project } from "@/types";
 
@@ -21,7 +21,7 @@ export function IssueFilters({
   repoFilter,
   onStatusFilterChange,
   onRepoFilterChange,
-  project,
+  project
 }: IssueFiltersProps) {
   const projectRepos = project.repositories || [];
 

@@ -8,7 +8,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -47,7 +47,9 @@ export function SignupForm({ redirect }: SignupFormProps) {
     } catch (err: any) {
       console.error(err);
       setError(
-        err?.message || err?.code || "Account creation failed. Please try again."
+        err?.message ||
+          err?.code ||
+          "Account creation failed. Please try again."
       );
     } finally {
       setIsSigningUp(false);

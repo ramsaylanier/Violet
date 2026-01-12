@@ -6,7 +6,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { deleteProject } from "@/api/projects";
 import type { Project } from "@/types";
@@ -29,18 +29,11 @@ interface ProjectSettingsProps {
   onUpdate?: (updatedProject: Project) => void;
 }
 
-export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
+export function ProjectSettings({ project, onUpdate: _onUpdate }: ProjectSettingsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [localProject, setLocalProject] = useState(project);
-
-  const handleProjectUpdate = (updatedProject: Project) => {
-    setLocalProject(updatedProject);
-    if (onUpdate) {
-      onUpdate(updatedProject);
-    }
-  };
+  const [localProject, _setLocalProject] = useState(project);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProject(project.id),
@@ -53,7 +46,7 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     onError: (error) => {
       console.error("Failed to delete project:", error);
       setIsDeleting(false);
-    },
+    }
   });
 
   const handleDelete = () => {
@@ -109,8 +102,8 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete
-                  the project "{localProject.name}" and all of its data.
+                  This action cannot be undone. This will permanently delete the
+                  project "{localProject.name}" and all of its data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

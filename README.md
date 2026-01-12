@@ -103,16 +103,19 @@ src/
 ## Key Features Implemented
 
 ### ✅ Authentication
+
 - Firebase Authentication (email/password)
 - User profile management
 - Protected server functions
 
 ### ✅ Project Management
+
 - Create, read, update, delete projects
 - Project listing with cards
 - Project detail pages with tabs
 
 ### ✅ GitHub Integration
+
 - Create repositories
 - List repositories
 - Create and list issues
@@ -120,17 +123,20 @@ src/
 - Create pull requests
 
 ### ✅ Firebase Integration
+
 - Initialize Firestore
 - Setup Storage
 - Setup Hosting
 
 ### ✅ AI Agent System
+
 - Claude-powered agent executor
 - Tool calling for GitHub and Firebase operations
 - Chat interface for interacting with the agent
 - Multi-step workflow support
 
 ### ✅ UI Components
+
 - ShadCN UI components (Button, Card, Dialog, Tabs, etc.)
 - Responsive design
 - Authentication flow
@@ -161,6 +167,7 @@ TanStack Start provides type-safe server functions that are automatically typed 
 ## AI Agent
 
 The AI agent can perform various actions through tool calling:
+
 - Create GitHub repositories and issues
 - Initialize Firebase projects and services
 - Create and update projects

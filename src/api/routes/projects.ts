@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
     }));
 
     res.json(projects);
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
     }
     console.error("Error listing projects:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -61,7 +61,7 @@ router.post("/", async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date(),
       settings: settings || { autoSync: false, notifications: true },
-      userId,
+      userId
     };
 
     // Only include optional fields if they are defined (not undefined)
@@ -76,7 +76,7 @@ router.post("/", async (req, res) => {
 
     const project = {
       id: docRef.id,
-      ...projectData,
+      ...projectData
     };
 
     res.json(project);
@@ -86,7 +86,7 @@ router.post("/", async (req, res) => {
     }
     console.error("Error creating project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -117,7 +117,7 @@ router.get("/:id", async (req, res) => {
       id: doc.id,
       ...data,
       createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date()
     };
 
     res.json(project);
@@ -127,7 +127,7 @@ router.get("/:id", async (req, res) => {
     }
     console.error("Error getting project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -168,7 +168,7 @@ router.put("/:id", async (req, res) => {
     }
 
     const updateData: any = {
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
 
     if (updates.name !== undefined) updateData.name = updates.name;
@@ -207,7 +207,7 @@ router.put("/:id", async (req, res) => {
       id: updatedDoc.id,
       ...updatedData,
       createdAt: updatedData.createdAt?.toDate() || new Date(),
-      updatedAt: updatedData.updatedAt?.toDate() || new Date(),
+      updatedAt: updatedData.updatedAt?.toDate() || new Date()
     };
 
     res.json(project);
@@ -217,7 +217,7 @@ router.put("/:id", async (req, res) => {
     }
     console.error("Error updating project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });
@@ -253,7 +253,7 @@ router.delete("/:id", async (req, res) => {
     }
     console.error("Error deleting project:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error",
+      error: error instanceof Error ? error.message : "Internal server error"
     });
   }
 });

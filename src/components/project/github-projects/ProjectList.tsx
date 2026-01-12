@@ -14,7 +14,7 @@ interface ProjectListProps {
 export function ProjectList({
   projects,
   onRemove,
-  loading = false,
+  loading = false
 }: ProjectListProps) {
   if (projects.length === 0) {
     return null;

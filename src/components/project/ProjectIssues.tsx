@@ -5,28 +5,26 @@ import {
   ExternalLink,
   Plus,
   Loader2,
-  MessageSquare,
+  MessageSquare
 } from "lucide-react";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import type { Project, GitHubIssue, GitHubIssueComment, User } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import type { Project, GitHubIssue, GitHubIssueComment } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { GitHubNotConnectedState } from "@/components/shared/GitHubNotConnectedState";
 import { NoRepositoriesState } from "@/components/shared/NoRepositoriesState";
@@ -37,7 +35,7 @@ import {
   closeGitHubIssue,
   reopenGitHubIssue,
   addGitHubIssueComment,
-  listGitHubIssueComments,
+  listGitHubIssueComments
 } from "@/api/github";
 import { CreateIssueDialog } from "./issues/CreateIssueDialog";
 import { IssueFilters } from "./issues/IssueFilters";
@@ -68,11 +66,6 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Create issue form state
-  const [newIssueRepo, setNewIssueRepo] = useState<string>("");
-  const [newIssueTitle, setNewIssueTitle] = useState("");
-  const [newIssueBody, setNewIssueBody] = useState("");
-  const [submittingIssue, setSubmittingIssue] = useState(false);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">(
@@ -124,41 +117,6 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
     }
 
     setFilteredIssues(filtered);
-  };
-
-  const handleCreateIssue = async () => {
-    if (!newIssueRepo || !newIssueTitle.trim()) {
-      setError("Repository and title are required");
-      return;
-    }
-
-    const [owner, repo] = newIssueRepo.split("/");
-    if (!owner || !repo) {
-      setError("Invalid repository format");
-      return;
-    }
-
-    try {
-      setSubmittingIssue(true);
-      setError(null);
-      await createGitHubIssue({
-        owner,
-        repo,
-        title: newIssueTitle,
-        body: newIssueBody || undefined,
-      });
-
-      setCreateDialogOpen(false);
-      setNewIssueRepo("");
-      setNewIssueTitle("");
-      setNewIssueBody("");
-      await loadIssues();
-    } catch (err: any) {
-      console.error("Failed to create issue:", err);
-      setError(err?.message || "Failed to create issue");
-    } finally {
-      setSubmittingIssue(false);
-    }
   };
 
   const handleViewIssue = async (issue: IssueWithRepo) => {
@@ -311,7 +269,9 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
         </Card>
       ) : filteredIssues.length === 0 ? (
         <EmptyState
-          icon={<AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />}
+          icon={
+            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground" />
+          }
           title="No issues found"
           description={
             issues.length === 0
@@ -388,7 +348,7 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
                         style={{
                           backgroundColor: `#${label.color}20`,
                           color: `#${label.color}`,
-                          borderColor: `#${label.color}`,
+                          borderColor: `#${label.color}`
                         }}
                       >
                         {label.name}

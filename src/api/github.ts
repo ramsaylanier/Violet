@@ -8,7 +8,7 @@ import type {
   GitHubIssue,
   GitHubIssueComment,
   GitHubProject,
-  GitHubProjectItem,
+  GitHubProjectItem
 } from "@/types";
 
 export async function createGitHubRepository(data: {
@@ -175,9 +175,19 @@ export async function removeGitHubIssueLabels(
 export async function listGitHubIssuesAggregated(
   repositories: Array<{ owner: string; name: string }>,
   state?: "open" | "closed" | "all"
-): Promise<Array<GitHubIssue & { repository: { owner: string; name: string; fullName: string } }>> {
+): Promise<
+  Array<
+    GitHubIssue & {
+      repository: { owner: string; name: string; fullName: string };
+    }
+  >
+> {
   return apiGet<
-    Array<GitHubIssue & { repository: { owner: string; name: string; fullName: string } }>
+    Array<
+      GitHubIssue & {
+        repository: { owner: string; name: string; fullName: string };
+      }
+    >
   >(
     `/github/issues/aggregated?repositories=${encodeURIComponent(JSON.stringify(repositories))}${state ? `&state=${state}` : ""}`
   );
@@ -221,18 +231,24 @@ export async function getGitHubRepositoryId(
   return response.id;
 }
 
-export async function listGitHubOrganizations(): Promise<Array<{
-  login: string;
-  id: number;
-  avatar_url?: string;
-}>> {
+export async function listGitHubOrganizations(): Promise<
+  Array<{
+    login: string;
+    id: number;
+    avatar_url?: string;
+  }>
+> {
   return apiGet<Array<{ login: string; id: number; avatar_url?: string }>>(
     "/github/organizations"
   );
 }
 
-export async function getGitHubProject(projectId: string): Promise<GitHubProject> {
-  return apiGet<GitHubProject>(`/github/projects/${encodeURIComponent(projectId)}`);
+export async function getGitHubProject(
+  projectId: string
+): Promise<GitHubProject> {
+  return apiGet<GitHubProject>(
+    `/github/projects/${encodeURIComponent(projectId)}`
+  );
 }
 
 export async function createGitHubProject(data: {

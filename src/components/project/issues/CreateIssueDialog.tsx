@@ -5,7 +5,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import { createGitHubIssue } from "@/api/github";
 import type { Project } from "@/types";
@@ -30,11 +30,10 @@ interface CreateIssueDialogProps {
 }
 
 export function CreateIssueDialog({
-  open,
   onOpenChange,
   project,
   onSuccess,
-  error: externalError,
+  error: externalError
 }: CreateIssueDialogProps) {
   const [newIssueRepo, setNewIssueRepo] = useState<string>("");
   const [newIssueTitle, setNewIssueTitle] = useState("");
@@ -64,7 +63,7 @@ export function CreateIssueDialog({
         owner,
         repo,
         title: newIssueTitle,
-        body: newIssueBody || undefined,
+        body: newIssueBody || undefined
       });
 
       onOpenChange(false);
@@ -138,7 +137,11 @@ export function CreateIssueDialog({
         )}
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={handleCancel} disabled={submittingIssue}>
+        <Button
+          variant="outline"
+          onClick={handleCancel}
+          disabled={submittingIssue}
+        >
           Cancel
         </Button>
         <Button onClick={handleCreateIssue} disabled={submittingIssue}>

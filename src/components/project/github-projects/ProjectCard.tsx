@@ -1,10 +1,5 @@
 import { CheckSquare, Trash2, Plus } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink as ExternalLinkComponent } from "@/components/shared/ExternalLink";
 
@@ -34,7 +29,7 @@ interface UnlinkedProjectCardProps {
 export function LinkedProjectCard({
   project,
   onRemove,
-  loading = false,
+  loading = false
 }: LinkedProjectCardProps) {
   return (
     <Card>
@@ -62,9 +57,7 @@ export function LinkedProjectCard({
           <div className="text-sm font-mono mt-1">{project.projectId}</div>
         </div>
         <div>
-          <div className="text-sm font-medium text-muted-foreground">
-            Owner
-          </div>
+          <div className="text-sm font-medium text-muted-foreground">Owner</div>
           <div className="text-sm mt-1">{project.owner}</div>
         </div>
         {project.url && (
@@ -82,7 +75,7 @@ export function LinkedProjectCard({
 export function UnlinkedProjectCard({
   project,
   onLink,
-  loading = false,
+  loading = false
 }: UnlinkedProjectCardProps) {
   return (
     <Card>
@@ -105,9 +98,7 @@ export function UnlinkedProjectCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-muted-foreground">
-            Owner
-          </div>
+          <div className="text-sm font-medium text-muted-foreground">Owner</div>
           <div className="text-sm mt-1">
             {project.owner?.login || "Unknown"}
           </div>

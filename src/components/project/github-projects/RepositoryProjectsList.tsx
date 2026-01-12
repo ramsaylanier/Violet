@@ -13,7 +13,7 @@ export function RepositoryProjectsList({
   projects,
   onLink,
   hasLinkedProjects,
-  loading = false,
+  loading = false
 }: RepositoryProjectsListProps) {
   if (projects.length === 0) {
     return null;

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Header from "@/components/Header";
 
 export const Route = createFileRoute("/_app")({
-  component: Index,
+  component: Index
 });
 
 function Index() {

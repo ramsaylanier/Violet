@@ -13,8 +13,7 @@ export function ExternalLink({
   href,
   children,
   icon: Icon = ExternalLinkIcon,
-  className = "",
-  platform,
+  className = ""
 }: ExternalLinkProps) {
   return (
     <a
