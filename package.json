@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check": "concurrently \"npm run lint\" \"npm run format\" \"npm run typecheck\"",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
     "dev:api": "tsx watch src/api/server.ts",
     "dev:client": "vite dev --port 3000",

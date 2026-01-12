@@ -1,15 +1,12 @@
 import type { Project } from "@/types";
-import { ProjectGitHubProjects } from "./ProjectGitHubProjects";
+import { GithubProjects } from "./github-projects/GitHubProjects";
 
 interface ProjectPlanningProps {
   project: Project;
   onUpdate?: (updatedProject: Project) => void;
 }
 
-export function ProjectPlanning({
-  project,
-  onUpdate
-}: ProjectPlanningProps) {
+export function ProjectPlanning({ project, onUpdate }: ProjectPlanningProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -18,10 +15,7 @@ export function ProjectPlanning({
           Manage GitHub Projects for planning and organization
         </p>
       </div>
-      <ProjectGitHubProjects
-        project={project}
-        onUpdate={onUpdate || (() => {})}
-      />
+      <GithubProjects project={project} onUpdate={onUpdate || (() => {})} />
     </div>
   );
 }

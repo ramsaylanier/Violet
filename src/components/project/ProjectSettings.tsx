@@ -29,7 +29,10 @@ interface ProjectSettingsProps {
   onUpdate?: (updatedProject: Project) => void;
 }
 
-export function ProjectSettings({ project, onUpdate: _onUpdate }: ProjectSettingsProps) {
+export function ProjectSettings({
+  project,
+  onUpdate: _onUpdate
+}: ProjectSettingsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);

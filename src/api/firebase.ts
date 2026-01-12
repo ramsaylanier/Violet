@@ -47,3 +47,33 @@ export async function disconnectGoogle(): Promise<{ success: boolean }> {
 export async function listFirebaseProjects(): Promise<FirebaseProject[]> {
   return apiGet<FirebaseProject[]>("/firebase/projects");
 }
+
+/**
+ * Initialize Firestore database
+ */
+export async function initializeFirestoreDB(input: {
+  projectId: string;
+  databaseId?: string;
+  location?: string;
+}): Promise<unknown> {
+  return apiPost("/firebase/initialize-firestore", input);
+}
+
+/**
+ * Setup Firebase Storage
+ */
+export async function setupFirebaseStorage(input: {
+  projectId: string;
+}): Promise<unknown> {
+  return apiPost("/firebase/setup-storage", input);
+}
+
+/**
+ * Setup Firebase Hosting
+ */
+export async function setupFirebaseHosting(input: {
+  projectId: string;
+  siteId?: string;
+}): Promise<unknown> {
+  return apiPost("/firebase/setup-hosting", input);
+}

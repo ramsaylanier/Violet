@@ -10,36 +10,23 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GitHubNotConnectedState } from "@/components/shared/GitHubNotConnectedState";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { listGitHubProjectsForRepository } from "@/api/github";
-import { updateProject } from "@/api/projects";
 import type { Project, GitHubProject } from "@/types";
-import { CreateProjectDialog } from "./github-projects/CreateProjectDialog";
-import { RemoveProjectDialog } from "./github-projects/RemoveProjectDialog";
-import { ProjectList } from "./github-projects/ProjectList";
-import { RepositoryProjectsList } from "./github-projects/RepositoryProjectsList";
+import { CreateProjectDialog } from "./CreateGithubProjectDialog";
+import { GithubProjectCard } from "./GithubProjectCard";
 
-interface ProjectGitHubProjectsProps {
+interface GithubProjectsProps {
   project: Project;
   onUpdate: (updatedProject: Project) => void;
 }
 
-export function ProjectGitHubProjects({
-  project,
-  onUpdate
-}: ProjectGitHubProjectsProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  const [projectToRemove, setProjectToRemove] = useState<{
-    projectId: string;
-    name: string;
-  } | null>(null);
-
   const { user, loadingUser } = useCurrentUser();
   const queryClient = useQueryClient();
   const projectGitHubProjects = project.githubProjects || [];
@@ -96,77 +83,6 @@ export function ProjectGitHubProjects({
 
   const uniqueRepositoryProjects = repositoryProjectsData;
 
-  const handleLinkRepositoryProject = async (projectToLink: GitHubProject) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const owner = projectToLink.owner?.login || "";
-      const ownerType =
-        projectToLink.owner?.type === "Organization" ? "org" : "user";
-      const projectData = {
-        projectId: projectToLink.id,
-        name: projectToLink.title,
-        owner,
-        ownerType: ownerType as "user" | "org",
-        url: projectToLink.url
-      };
-
-      const updatedProjects = [...projectGitHubProjects, projectData];
-      const updatedProject = await updateProject(project.id, {
-        githubProjects: updatedProjects
-      });
-
-      onUpdate(updatedProject);
-
-      // Invalidate both repository projects and projects list queries
-      queryClient.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey[0] === "github-repository-projects" ||
-          query.queryKey[0] === "projects"
-      });
-    } catch (err: any) {
-      console.error("Failed to link repository project:", err);
-      setError(err?.message || "Failed to link project");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRemoveClick = (project: { projectId: string; name: string }) => {
-    setProjectToRemove(project);
-    setRemoveDialogOpen(true);
-    setError(null);
-  };
-
-  const handleRemoveProject = async () => {
-    if (!projectToRemove) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const updatedProjects = projectGitHubProjects.filter(
-        (p) => p.projectId !== projectToRemove.projectId
-      );
-      const updatedProject = await updateProject(project.id, {
-        githubProjects: updatedProjects.length > 0 ? updatedProjects : []
-      });
-
-      onUpdate(updatedProject);
-      // Invalidate projects list to refetch
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setRemoveDialogOpen(false);
-      setProjectToRemove(null);
-    } catch (err: any) {
-      console.error("Failed to remove project:", err);
-      setError(err?.message || "Failed to remove project");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateSuccess = (updatedProject: Project) => {
     onUpdate(updatedProject);
     queryClient.invalidateQueries({
@@ -214,7 +130,6 @@ export function ProjectGitHubProjects({
                 project={project}
                 onSuccess={handleCreateSuccess}
                 isGitHubConnected={isGitHubConnected}
-                loading={loading}
               />
             </Dialog>
           </div>
@@ -224,17 +139,25 @@ export function ProjectGitHubProjects({
             <LoadingState message="Loading projects from repositories..." />
           ) : hasProjects ? (
             <div className="space-y-4">
-              <ProjectList
-                projects={projectGitHubProjects}
-                onRemove={handleRemoveClick}
-                loading={loading}
-              />
-              <RepositoryProjectsList
-                projects={uniqueRepositoryProjects}
-                onLink={handleLinkRepositoryProject}
-                hasLinkedProjects={projectGitHubProjects.length > 0}
-                loading={loading}
-              />
+              {uniqueRepositoryProjects.length > 0 && (
+                <>
+                  {projectGitHubProjects.length > 0 && (
+                    <div className="my-4">
+                      <Separator />
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-4">
+                      Projects from Repositories
+                    </div>
+                    <div className="space-y-4">
+                      {uniqueRepositoryProjects.map((proj) => (
+                        <GithubProjectCard key={proj.id} project={proj} />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <EmptyState
@@ -247,14 +170,6 @@ export function ProjectGitHubProjects({
           )}
         </CardContent>
       </Card>
-
-      <RemoveProjectDialog
-        open={removeDialogOpen}
-        onOpenChange={setRemoveDialogOpen}
-        projectName={projectToRemove?.name || ""}
-        onConfirm={handleRemoveProject}
-        error={error}
-      />
     </div>
   );
 }
