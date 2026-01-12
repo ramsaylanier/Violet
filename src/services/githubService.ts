@@ -241,7 +241,12 @@ export async function listIssues(
     per_page: 100
   });
 
-  return response.data.map((issue) => ({
+  // Filter out pull requests (they have a pull_request property)
+  const issuesOnly = response.data.filter(
+    (issue) => !issue.pull_request
+  );
+
+  return issuesOnly.map((issue) => ({
     id: issue.id,
     number: issue.number,
     title: issue.title,
