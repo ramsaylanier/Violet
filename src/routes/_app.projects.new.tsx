@@ -98,7 +98,10 @@ function NewProject() {
       }
 
       // Navigate to the newly created project
-      navigate({ to: "/projects/$projectId", params: { projectId: project.id } });
+      navigate({
+        to: "/projects/$projectId",
+        params: { projectId: project.id }
+      });
     } catch (err: any) {
       console.error("Failed to create project:", err);
       setError(err?.message || "Failed to create project. Please try again.");

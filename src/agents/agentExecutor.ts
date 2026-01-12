@@ -41,11 +41,26 @@ export async function executeAgent(
 
 Always be concise and helpful. When a user asks you to do something, use the appropriate tools.`;
 
-  const tools = allTools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    input_schema: tool.inputSchema
-  }));
+  const tools = allTools.map((tool) => {
+    const inputSchema: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required?: string[];
+    } = {
+      type: "object" as const,
+      properties: tool.inputSchema.properties as Record<string, unknown>
+    };
+
+    if ("required" in tool.inputSchema && tool.inputSchema.required) {
+      inputSchema.required = Array.from(tool.inputSchema.required) as string[];
+    }
+
+    return {
+      name: tool.name,
+      description: tool.description,
+      input_schema: inputSchema
+    };
+  });
 
   try {
     const response = await anthropic.messages.create({
@@ -141,7 +156,7 @@ Always be concise and helpful. When a user asks you to do something, use the app
         } catch (error) {
           toolCalls.push({
             tool: toolName,
-            input: toolInput,
+            input: toolInput as Record<string, unknown>,
             error: error instanceof Error ? error.message : String(error)
           });
         }

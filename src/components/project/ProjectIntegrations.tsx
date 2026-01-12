@@ -58,10 +58,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import type {
-  Project,
-  FirebaseProject as FirebaseProjectType
-} from "@/types";
+import type { Project, FirebaseProject as FirebaseProjectType } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   verifyFirebaseProject,

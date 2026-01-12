@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
-  Github,
   Flame,
   ExternalLink,
   AlertCircle,
@@ -92,49 +91,6 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
             </div>
           </CardContent>
         </Card>
-
-        {project.repositories && project.repositories.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Github className="w-5 h-5" />
-                GitHub Repositories ({project.repositories.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {project.repositories.map((repo, index) => (
-                <div
-                  key={repo.fullName}
-                  className={index > 0 ? "pt-4 border-t" : ""}
-                >
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Owner
-                    </div>
-                    <div className="text-sm mt-1">{repo.owner}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Repository Name
-                    </div>
-                    <div className="text-sm mt-1">{repo.name}</div>
-                  </div>
-                  <div>
-                    <a
-                      href={repo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                    >
-                      View on GitHub
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
 
         {project.firebaseProjectId && (
           <Card>

@@ -242,9 +242,7 @@ export async function listIssues(
   });
 
   // Filter out pull requests (they have a pull_request property)
-  const issuesOnly = response.data.filter(
-    (issue) => !issue.pull_request
-  );
+  const issuesOnly = response.data.filter((issue) => !issue.pull_request);
 
   return issuesOnly.map((issue) => ({
     id: issue.id,

@@ -14,12 +14,7 @@ import {
   AlertCircle,
   CheckCircle2
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -597,10 +592,22 @@ export function ProjectRepositories({
             <Card key={repo.fullName}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Github className="w-5 h-5" />
-                    {repo.fullName}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Github className="w-5 h-5" />
+                      {repo.fullName}
+                    </CardTitle>
+                    <div>
+                      <a
+                        href={repo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <ExternalLink className="w-5 h-5" />
+                      </a>
+                    </div>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -612,30 +619,6 @@ export function ProjectRepositories({
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Owner
-                  </div>
-                  <div className="text-sm mt-1">{repo.owner}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground">
-                    Repository Name
-                  </div>
-                  <div className="text-sm mt-1">{repo.name}</div>
-                </div>
-                <div>
-                  <a
-                    href={repo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                  >
-                    View on GitHub
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-
                 {/* Issues Section */}
                 {isGitHubConnected && (
                   <Collapsible
