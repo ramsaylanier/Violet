@@ -24,7 +24,7 @@ import { ProjectSettings } from "@/components/project/ProjectSettings";
 import { ProjectRepositories } from "@/components/project/ProjectRepositories";
 import { ProjectIntegrations } from "@/components/project/ProjectIntegrations";
 import { ProjectIssues } from "@/components/project/ProjectIssues";
-import { ProjectGitHubProjects } from "@/components/project/ProjectGitHubProjects";
+import { ProjectPlanning } from "@/components/project/ProjectPlanning";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
@@ -48,6 +48,7 @@ function ProjectView() {
     "overview",
     "repositories",
     "issues",
+    "planning",
     "integrations",
     "settings"
   ];
@@ -163,7 +164,8 @@ function ProjectView() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="repositories">Repositories</TabsTrigger>
-          <TabsTrigger value="issues">Issues & Projects</TabsTrigger>
+          <TabsTrigger value="issues">Issues</TabsTrigger>
+          <TabsTrigger value="planning">Planning</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -180,16 +182,17 @@ function ProjectView() {
         </TabsContent>
 
         <TabsContent value="issues" className="space-y-4">
-          <div className="space-y-6">
-            <ProjectIssues
-              project={project}
-              onUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-            <ProjectGitHubProjects
-              project={project}
-              onUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-          </div>
+          <ProjectIssues
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        </TabsContent>
+
+        <TabsContent value="planning" className="space-y-4">
+          <ProjectPlanning
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-4">
