@@ -285,6 +285,17 @@ export async function updateGitHubProjectItem(
   );
 }
 
+export async function getGitHubIssueNodeId(
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<string> {
+  const response = await apiGet<{ nodeId: string }>(
+    `/github/issues/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${issueNumber}/node-id`
+  );
+  return response.nodeId;
+}
+
 export async function addGitHubProjectItem(
   projectId: string,
   contentId: string

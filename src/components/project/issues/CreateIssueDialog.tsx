@@ -19,7 +19,12 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { createGitHubIssue } from "@/api/github";
+import {
+  createGitHubIssue,
+  addGitHubProjectItem,
+  getGitHubIssueNodeId
+} from "@/api/github";
+import { useGetGithubProjects } from "@/hooks/useGetGithubProjects";
 import type { Project, GitHubIssue } from "@/types";
 
 interface CreateIssueDialogProps {
@@ -41,10 +46,14 @@ export function CreateIssueDialog({
   );
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueBody, setNewIssueBody] = useState("");
+  const [selectedGitHubProject, setSelectedGitHubProject] =
+    useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const projectRepos = project.repositories || [];
+  const { availableRepositoryProjects } = useGetGithubProjects(project);
+
   const displayError = error || externalError;
 
   const createIssueMutation = useMutation({
@@ -58,12 +67,33 @@ export function CreateIssueDialog({
         throw new Error("Invalid repository format");
       }
 
-      return await createGitHubIssue({
+      const createdIssue = await createGitHubIssue({
         owner,
         repo,
         title: newIssueTitle,
         body: newIssueBody || undefined
       });
+
+      // If a GitHub project is selected, add the issue to it
+      if (selectedGitHubProject) {
+        try {
+          // Get the issue node ID (required for GraphQL API)
+          const issueNodeId = await getGitHubIssueNodeId(
+            owner,
+            repo,
+            createdIssue.number
+          );
+
+          // Add the issue to the selected GitHub project
+          await addGitHubProjectItem(selectedGitHubProject, issueNodeId);
+        } catch (projectError) {
+          console.error("Failed to add issue to GitHub project:", projectError);
+          // Don't fail the entire operation if adding to project fails
+          // The issue was created successfully, just log the error
+        }
+      }
+
+      return createdIssue;
     },
     onSuccess: (createdIssue) => {
       // Optimistically update the query cache with the new issue
@@ -107,6 +137,7 @@ export function CreateIssueDialog({
       onOpenChange(false);
       setNewIssueTitle("");
       setNewIssueBody("");
+      setSelectedGitHubProject("");
       setError(null);
       onSuccess();
     },
@@ -126,6 +157,7 @@ export function CreateIssueDialog({
     setNewIssueRepo("");
     setNewIssueTitle("");
     setNewIssueBody("");
+    setSelectedGitHubProject("");
     setError(null);
   };
 
@@ -153,6 +185,30 @@ export function CreateIssueDialog({
             </SelectContent>
           </Select>
         </div>
+        {availableRepositoryProjects.length > 0 && (
+          <div>
+            <Label htmlFor="github-project-select">
+              GitHub Project (optional)
+            </Label>
+            <Select
+              defaultValue={availableRepositoryProjects[0].id}
+              // value={selectedGitHubProject}
+              onValueChange={setSelectedGitHubProject}
+            >
+              <SelectTrigger id="github-project-select" className="mt-2">
+                <SelectValue placeholder="Select a GitHub project..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableRepositoryProjects.map((githubProject) => (
+                  <SelectItem key={githubProject.id} value={githubProject.id}>
+                    {githubProject.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label htmlFor="issue-title">Title</Label>
           <Input

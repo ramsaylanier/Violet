@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Plus } from "lucide-react";
 import {
   Card,
@@ -14,9 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GitHubNotConnectedState } from "@/components/shared/GitHubNotConnectedState";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { listGitHubProjectsForRepository } from "@/api/github";
-import type { Project, GitHubProject } from "@/types";
+import { useGetGithubProjects } from "@/hooks/useGetGithubProjects";
+import type { Project } from "@/types";
 import { CreateProjectDialog } from "./CreateGithubProjectDialog";
 import { GithubProjectCard } from "./GithubProjectCard";
 
@@ -27,61 +26,15 @@ interface GithubProjectsProps {
 
 export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const { user, loadingUser } = useCurrentUser();
   const queryClient = useQueryClient();
-  const projectGitHubProjects = project.githubProjects || [];
-  const projectRepos = project.repositories || [];
-  const isGitHubConnected = !!user?.githubToken;
-
-  // Fetch projects for all repositories using TanStack Query
-  const projectIds = new Set(projectGitHubProjects.map((p) => p.projectId));
 
   const {
-    data: repositoryProjectsData = [],
-    isLoading: loadingRepositoryProjects
-  } = useQuery({
-    queryKey: [
-      "github-repository-projects",
-      projectRepos
-        .map((r) => r.fullName)
-        .sort()
-        .join(",")
-    ],
-    queryFn: async () => {
-      if (!isGitHubConnected || projectRepos.length === 0) {
-        return [];
-      }
+    availableRepositoryProjects,
+    isLoadingRepositoryProjects,
+    isGitHubConnected
+  } = useGetGithubProjects(project);
 
-      const allProjects: GitHubProject[] = [];
-
-      // Fetch projects for each repository in parallel
-      const promises = projectRepos.map(async (repo) => {
-        try {
-          const [owner, name] = repo.fullName.split("/");
-          if (!owner || !name) return [];
-          const projects = await listGitHubProjectsForRepository(owner, name);
-          return projects;
-        } catch (err: any) {
-          console.error(`Failed to load projects for ${repo.fullName}:`, err);
-          return [];
-        }
-      });
-
-      const results = await Promise.all(promises);
-      allProjects.push(...results.flat());
-
-      // Remove duplicates by ID, filter out already linked projects, and only include open projects
-      const uniqueProjects = Array.from(
-        new Map(allProjects.map((p) => [p.id, p])).values()
-      ).filter((p) => !projectIds.has(p.id) && !p.closed);
-
-      return uniqueProjects;
-    },
-    enabled: isGitHubConnected && projectRepos.length > 0,
-    retry: 1
-  });
-
-  const uniqueRepositoryProjects = repositoryProjectsData;
+  const projectRepos = project.repositories || [];
 
   const handleCreateSuccess = (updatedProject: Project) => {
     onUpdate(updatedProject);
@@ -90,18 +43,13 @@ export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
     });
   };
 
-  if (loadingUser) {
-    return <LoadingState message="Loading user..." />;
-  }
-
   if (!isGitHubConnected) {
     return (
       <GitHubNotConnectedState description="Connect your GitHub account to link GitHub Projects" />
     );
   }
 
-  const hasProjects =
-    projectGitHubProjects.length > 0 || uniqueRepositoryProjects.length > 0;
+  const hasProjects = availableRepositoryProjects.length > 0;
 
   return (
     <div className="space-y-4">
@@ -135,13 +83,13 @@ export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {loadingRepositoryProjects && projectRepos.length > 0 ? (
+          {isLoadingRepositoryProjects && projectRepos.length > 0 ? (
             <LoadingState message="Loading projects from repositories..." />
           ) : hasProjects ? (
             <div className="space-y-4">
-              {uniqueRepositoryProjects.length > 0 && (
+              {availableRepositoryProjects.length > 0 && (
                 <>
-                  {projectGitHubProjects.length > 0 && (
+                  {availableRepositoryProjects.length > 0 && (
                     <div className="my-4">
                       <Separator />
                     </div>
@@ -151,7 +99,7 @@ export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
                       Projects from Repositories
                     </div>
                     <div className="space-y-4">
-                      {uniqueRepositoryProjects.map((proj) => (
+                      {availableRepositoryProjects.map((proj) => (
                         <GithubProjectCard key={proj.id} project={proj} />
                       ))}
                     </div>
