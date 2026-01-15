@@ -11,8 +11,10 @@ import {
   setupHosting,
   createFirestoreCollection,
   verifyFirebaseProject,
+  listFirebaseProjects,
   getFirebaseProjectMetadata
 } from "@/server/services/firebaseService";
+
 import {
   downloadGitHubTarball,
   downloadGitLabTarball,
@@ -26,7 +28,10 @@ import {
   addFirebaseDomain,
   getFirebaseDomainDNSRecords
 } from "@/server/services/firebaseHostingService";
-import { getUserProfile, updateUserProfile } from "@/server/services/authService";
+import {
+  getUserProfile,
+  updateUserProfile
+} from "@/server/services/authService";
 import { tmpdir } from "os";
 import * as path from "path";
 import * as fs from "fs/promises";
@@ -373,7 +378,6 @@ router.get("/projects", async (req, res) => {
       });
     }
 
-    const { listFirebaseProjects } = await import("@/server/services/firebaseService");
     const projects = await listFirebaseProjects(userProfile.googleToken);
 
     res.json(projects);
