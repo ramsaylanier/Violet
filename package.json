@@ -6,11 +6,11 @@
   "scripts": {
     "check": "concurrently \"npm run lint\" \"npm run format\" \"npm run typecheck\"",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
-    "dev:api": "tsx watch src/api/server.ts",
+    "dev:api": "tsx watch src/server/api/server.ts",
     "dev:client": "vite dev --port 3000",
     "build": "vite build",
     "start": "npm run start:api & npm run start:client",
-    "start:api": "tsx src/api/server.ts",
+    "start:api": "tsx src/server/api/server.ts",
     "start:client": "vite preview --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
