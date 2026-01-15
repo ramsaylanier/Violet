@@ -12,6 +12,11 @@ service cloud.firestore {
       // Make sure to write security rules for your app before that time, or
       // else all client requests to your database will be denied until you
       // update your rules.
+      //
+      // Note: This application uses server-side API routes with Firebase Admin SDK
+      // which bypasses these security rules. Client-side code does not directly
+      // access Firestore. Sensitive token fields (githubToken, googleToken, cloudflareToken)
+      // are encrypted server-side and should never be exposed to the client.
       allow read, write: if request.time < timestamp.date(2026, 2, 9);
     }
   }

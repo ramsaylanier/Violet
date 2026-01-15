@@ -312,8 +312,6 @@ router.get("/repositories", async (req, res) => {
     const userId = await getRequireAuth(req);
     const user = await getUserProfile(userId);
 
-    console.log(user?.githubToken);
-
     if (!user?.githubToken) {
       return res.status(400).json({ error: "GitHub token not configured" });
     }
@@ -382,8 +380,6 @@ router.delete("/repositories/:owner/:repo", async (req, res) => {
     }
 
     const { owner, repo } = req.params;
-
-    console.log({ owner, repo });
 
     if (!owner || !repo) {
       return res.status(400).json({ error: "Owner and repo are required" });
@@ -921,8 +917,6 @@ router.get("/projects", async (req, res) => {
       owner: string;
       ownerType?: "user" | "org";
     };
-
-    console.log({ owner, ownerType });
 
     if (!owner) {
       return res.status(400).json({ error: "Owner parameter is required" });

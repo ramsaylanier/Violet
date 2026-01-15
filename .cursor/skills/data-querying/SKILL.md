@@ -1,0 +1,8 @@
+---
+name: data-querying
+description: Use Tanstack Query when fetching or mutation data
+---
+
+# Overview
+
+- whenever fetching or mutation data in the React application, you must use `useQuery` and `useMutation` from TanStack Query instead of fetching data through a use effect.

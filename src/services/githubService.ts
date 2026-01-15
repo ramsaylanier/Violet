@@ -139,7 +139,6 @@ export async function deleteRepository(
   owner: string,
   repo: string
 ): Promise<void> {
-  console.log({ owner, repo });
   try {
     const octokit = createGitHubClient(token);
     await octokit.repos.delete({

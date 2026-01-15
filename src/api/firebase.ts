@@ -77,3 +77,133 @@ export async function setupFirebaseHosting(input: {
 }): Promise<unknown> {
   return apiPost("/firebase/setup-hosting", input);
 }
+
+/**
+ * List hosting sites for a Firebase project
+ */
+export async function listFirebaseHostingSites(
+  firebaseProjectId: string
+): Promise<Array<{ name: string; siteId: string; defaultUrl: string; appId?: string }>> {
+  return apiGet(
+    `/firebase/sites/${encodeURIComponent(firebaseProjectId)}`
+  );
+}
+
+/**
+ * Deploy repository to Firebase Hosting
+ */
+export async function deployToFirebaseHosting(input: {
+  projectId: string;
+  repository: {
+    owner: string;
+    name: string;
+    branch?: string;
+    provider: "github" | "gitlab";
+  };
+  firebaseProjectId: string;
+  siteId?: string;
+}): Promise<{
+  id: string;
+  siteId: string;
+  version: string;
+  status: "pending" | "in_progress" | "success" | "failure";
+  url?: string;
+  createdAt: Date;
+  completedAt?: Date;
+  method: "native" | "api";
+  repository?: {
+    owner: string;
+    name: string;
+    branch: string;
+    commit?: string;
+    provider: "github" | "gitlab";
+  };
+}> {
+  return apiPost("/firebase/deploy", input);
+}
+
+/**
+ * Get deployment status
+ */
+export async function getFirebaseDeploymentStatus(
+  deploymentId: string,
+  firebaseProjectId: string,
+  siteId: string
+): Promise<{
+  id: string;
+  siteId: string;
+  version: string;
+  status: "pending" | "in_progress" | "success" | "failure";
+  url?: string;
+  createdAt: Date;
+  completedAt?: Date;
+  method: "native" | "api";
+}> {
+  return apiGet(
+    `/firebase/deployments/${encodeURIComponent(deploymentId)}/status?firebaseProjectId=${encodeURIComponent(firebaseProjectId)}&siteId=${encodeURIComponent(siteId)}`
+  );
+}
+
+/**
+ * List custom domains for a Firebase Hosting site
+ */
+export async function listFirebaseDomains(
+  siteId: string,
+  projectId: string
+): Promise<
+  Array<{
+    domain: string;
+    status: string;
+    updateTime?: string;
+    provisioning?: {
+      certStatus?: string;
+      dnsStatus?: string;
+    };
+  }>
+> {
+  return apiGet(
+    `/firebase/sites/${encodeURIComponent(siteId)}/domains?projectId=${encodeURIComponent(projectId)}`
+  );
+}
+
+/**
+ * Add a custom domain to a Firebase Hosting site
+ */
+export async function addFirebaseDomain(
+  siteId: string,
+  projectId: string,
+  domain: string
+): Promise<{
+  domain: string;
+  status: string;
+  updateTime?: string;
+  provisioning?: {
+    certStatus?: string;
+    dnsStatus?: string;
+  };
+}> {
+  return apiPost(`/firebase/sites/${encodeURIComponent(siteId)}/domains`, {
+    domain,
+    projectId
+  });
+}
+
+/**
+ * Get DNS records required for a Firebase Hosting custom domain
+ */
+export async function getFirebaseDomainDNSRecords(
+  siteId: string,
+  projectId: string,
+  domain: string
+): Promise<
+  Array<{
+    domainName: string;
+    type: string;
+    rdata: string;
+    requiredAction?: string;
+  }>
+> {
+  return apiGet(
+    `/firebase/sites/${encodeURIComponent(siteId)}/domains/${encodeURIComponent(domain)}/dns-records?projectId=${encodeURIComponent(projectId)}`
+  );
+}
