@@ -45,7 +45,6 @@ export async function disconnectGoogle(): Promise<{ success: boolean }> {
  * List Firebase projects for the authenticated user
  */
 export async function listFirebaseProjects(): Promise<FirebaseProject[]> {
-  console.log({ endpoint: "/firebase/projects" });
   return apiGet<FirebaseProject[]>("/firebase/projects");
 }
 

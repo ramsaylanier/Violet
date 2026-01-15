@@ -14,7 +14,12 @@ import {
   AlertCircle,
   CheckCircle2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/client/components/ui/card";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,

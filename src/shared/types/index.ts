@@ -113,7 +113,9 @@ export interface User {
   name?: string;
   createdAt: Date;
   githubToken?: string; // encrypted reference
+  gitlabToken?: string; // encrypted reference
   googleToken?: string; // encrypted reference
+  googleRefreshToken?: string; // encrypted reference
   cloudflareToken?: string; // encrypted
 }
 
@@ -198,7 +200,13 @@ export interface GitHubProjectItem {
 export interface CloudflareZone {
   id: string;
   name: string;
-  status: "active" | "pending" | "initializing" | "moved" | "deleted" | "deactivated";
+  status:
+    | "active"
+    | "pending"
+    | "initializing"
+    | "moved"
+    | "deleted"
+    | "deactivated";
   paused: boolean;
   type: "full" | "partial";
   development_mode: number;
@@ -244,7 +252,25 @@ export interface CloudflareDNSRecord {
   zone_id: string;
   zone_name: string;
   name: string;
-  type: "A" | "AAAA" | "CNAME" | "MX" | "TXT" | "SRV" | "SPF" | "NS" | "PTR" | "CAA" | "DNSKEY" | "DS" | "NAPTR" | "SMIMEA" | "SSHFP" | "SVCB" | "TLSA" | "URI";
+  type:
+    | "A"
+    | "AAAA"
+    | "CNAME"
+    | "MX"
+    | "TXT"
+    | "SRV"
+    | "SPF"
+    | "NS"
+    | "PTR"
+    | "CAA"
+    | "DNSKEY"
+    | "DS"
+    | "NAPTR"
+    | "SMIMEA"
+    | "SSHFP"
+    | "SVCB"
+    | "TLSA"
+    | "URI";
   content: string;
   proxiable: boolean;
   proxied?: boolean;

@@ -9,7 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/client/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/client/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage
+} from "@/client/components/ui/avatar";
 
 export function UserProfileMenu() {
   const { user, logout } = useAuth();

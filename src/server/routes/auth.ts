@@ -9,12 +9,17 @@ import {
   createUserProfile,
   updateUserProfile
 } from "@/server/services/authService";
-import { SESSION_COOKIE_NAME, COOKIE_MAX_AGE, setCookie } from "@/server/lib/cookies";
+import {
+  SESSION_COOKIE_NAME,
+  COOKIE_MAX_AGE,
+  setCookie
+} from "@/server/lib/cookies";
 
 const router = express.Router();
 
 /**
  * Helper function to get the current user ID from the session cookie or Authorization header
+ * Returns null if token is expired or invalid
  */
 async function getUserIdFromRequest(
   req: express.Request
@@ -26,7 +31,13 @@ async function getUserIdFromRequest(
     try {
       const userId = await verifyIdToken(idToken);
       return userId;
-    } catch {
+    } catch (error) {
+      // Log token expiration for debugging, but don't expose details
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("expired")) {
+        console.debug("Token expired in Authorization header");
+      }
       return null;
     }
   }
@@ -39,17 +50,30 @@ async function getUserIdFromRequest(
 
   try {
     return await verifyIdToken(idToken);
-  } catch {
+  } catch (error) {
+    // Log token expiration for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("expired")) {
+      console.debug("Token expired in session cookie");
+    }
     return null;
   }
 }
 
 /**
  * Helper function to require authentication
+ * Throws "Unauthorized" error if token is missing, expired, or invalid
  */
 export async function getRequireAuth(req: express.Request): Promise<string> {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
+    // Check if we have a token that might be expired
+    const authHeader = req.headers.authorization;
+    const cookieToken = req.cookies[SESSION_COOKIE_NAME];
+    if (authHeader || cookieToken) {
+      // Token exists but is invalid/expired
+      throw new Error("Token expired or invalid");
+    }
     throw new Error("Unauthorized");
   }
   return userId;

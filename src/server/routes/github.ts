@@ -32,7 +32,10 @@ import {
   createPullRequest
 } from "@/server/services/githubService";
 import { getRequireAuth } from "./auth.js";
-import { getUserProfile, updateUserProfile } from "@/server/services/authService";
+import {
+  getUserProfile,
+  updateUserProfile
+} from "@/server/services/authService";
 
 const router = express.Router();
 

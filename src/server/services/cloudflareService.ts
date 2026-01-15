@@ -40,9 +40,6 @@ async function cloudflareRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  console.log({ url });
-  console.log({ options });
-
   // Determine if we need Content-Type header (for POST, PUT, PATCH requests with body)
   const hasBody = options.body !== undefined;
   const method = options.method?.toUpperCase() || "GET";

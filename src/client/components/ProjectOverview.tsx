@@ -9,7 +9,12 @@ import {
   CheckSquare,
   Loader2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/client/components/ui/card";
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import { listGitHubIssuesAggregated } from "@/client/api/github";

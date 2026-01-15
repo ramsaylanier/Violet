@@ -1,5 +1,10 @@
 import { CheckSquare } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/client/components/ui/card";
 
 import { ExternalLink as ExternalLinkComponent } from "@/client/components/shared/ExternalLink";
 import { GitHubProject } from "@/shared/types";

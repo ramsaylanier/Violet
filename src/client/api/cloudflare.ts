@@ -15,7 +15,9 @@ import type {
 /**
  * Store/update Cloudflare API token
  */
-export async function storeCloudflareToken(token: string): Promise<{ success: boolean }> {
+export async function storeCloudflareToken(
+  token: string
+): Promise<{ success: boolean }> {
   return apiPost<{ success: boolean }>("/cloudflare/token", { token });
 }
 
@@ -36,8 +38,12 @@ export async function listCloudflareZones(): Promise<CloudflareZone[]> {
 /**
  * Get zone details by ID
  */
-export async function getCloudflareZone(zoneId: string): Promise<CloudflareZone> {
-  return apiGet<CloudflareZone>(`/cloudflare/zones/${encodeURIComponent(zoneId)}`);
+export async function getCloudflareZone(
+  zoneId: string
+): Promise<CloudflareZone> {
+  return apiGet<CloudflareZone>(
+    `/cloudflare/zones/${encodeURIComponent(zoneId)}`
+  );
 }
 
 /**
@@ -59,7 +65,8 @@ export async function listCloudflareDNSRecords(
   if (params?.name) queryParams.append("name", params.name);
   if (params?.content) queryParams.append("content", params.content);
   if (params?.match) queryParams.append("match", params.match);
-  if (params?.per_page) queryParams.append("per_page", params.per_page.toString());
+  if (params?.per_page)
+    queryParams.append("per_page", params.per_page.toString());
   if (params?.page) queryParams.append("page", params.page.toString());
 
   const queryString = queryParams.toString();
@@ -143,7 +150,9 @@ export async function deleteCloudflareDNSRecord(
 export async function getCloudflareSSLSettings(
   zoneId: string
 ): Promise<CloudflareSSLSetting> {
-  return apiGet<CloudflareSSLSetting>(`/cloudflare/zones/${encodeURIComponent(zoneId)}/ssl`);
+  return apiGet<CloudflareSSLSetting>(
+    `/cloudflare/zones/${encodeURIComponent(zoneId)}/ssl`
+  );
 }
 
 /**
@@ -198,8 +207,12 @@ export async function getCloudflareAccountId(): Promise<{ accountId: string }> {
 export async function listCloudflarePagesProjects(
   accountId?: string
 ): Promise<CloudflarePagesProject[]> {
-  const queryString = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
-  return apiGet<CloudflarePagesProject[]>(`/cloudflare/pages/projects${queryString}`);
+  const queryString = accountId
+    ? `?accountId=${encodeURIComponent(accountId)}`
+    : "";
+  return apiGet<CloudflarePagesProject[]>(
+    `/cloudflare/pages/projects${queryString}`
+  );
 }
 
 /**
@@ -209,7 +222,9 @@ export async function getCloudflarePagesProject(
   projectName: string,
   accountId?: string
 ): Promise<CloudflarePagesProject> {
-  const queryString = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
+  const queryString = accountId
+    ? `?accountId=${encodeURIComponent(accountId)}`
+    : "";
   return apiGet<CloudflarePagesProject>(
     `/cloudflare/pages/projects/${encodeURIComponent(projectName)}${queryString}`
   );
@@ -238,7 +253,9 @@ export async function deleteCloudflarePagesProject(
   projectName: string,
   accountId?: string
 ): Promise<{ success: boolean }> {
-  const queryString = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
+  const queryString = accountId
+    ? `?accountId=${encodeURIComponent(accountId)}`
+    : "";
   return apiDelete<{ success: boolean }>(
     `/cloudflare/pages/projects/${encodeURIComponent(projectName)}${queryString}`
   );
@@ -258,7 +275,8 @@ export async function listCloudflarePagesDeployments(
   const queryParams = new URLSearchParams();
   if (params?.accountId) queryParams.append("accountId", params.accountId);
   if (params?.page) queryParams.append("page", params.page.toString());
-  if (params?.per_page) queryParams.append("per_page", params.per_page.toString());
+  if (params?.per_page)
+    queryParams.append("per_page", params.per_page.toString());
 
   const queryString = queryParams.toString();
   return apiGet<CloudflarePagesDeployment[]>(
@@ -274,7 +292,9 @@ export async function getCloudflarePagesDeployment(
   deploymentId: string,
   accountId?: string
 ): Promise<CloudflarePagesDeployment> {
-  const queryString = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
+  const queryString = accountId
+    ? `?accountId=${encodeURIComponent(accountId)}`
+    : "";
   return apiGet<CloudflarePagesDeployment>(
     `/cloudflare/pages/projects/${encodeURIComponent(projectName)}/deployments/${encodeURIComponent(deploymentId)}${queryString}`
   );

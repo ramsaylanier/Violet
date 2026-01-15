@@ -22,15 +22,15 @@ function getEncryptionKey(): Buffer {
 
   try {
     const decodedKey = Buffer.from(key, "base64");
-    
+
     // AES-256-GCM requires exactly 32 bytes (256 bits)
     if (decodedKey.length !== 32) {
       throw new Error(
         `ENCRYPTION_KEY must decode to exactly 32 bytes, but got ${decodedKey.length} bytes. ` +
-        `Generate a new key using: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+          `Generate a new key using: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
       );
     }
-    
+
     return decodedKey;
   } catch (error) {
     if (error instanceof Error && error.message.includes("32 bytes")) {

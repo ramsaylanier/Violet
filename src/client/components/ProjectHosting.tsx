@@ -14,7 +14,12 @@ import {
   Clock,
   Settings
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/client/components/ui/card";
 import { Button } from "@/client/components/ui/button";
 import {
   AlertDialog,
@@ -206,10 +211,7 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
         </div>
         <div className="flex items-center gap-2">
           {project.repositories && project.repositories.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => setDeployDialogOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setDeployDialogOpen(true)}>
               <Flame className="w-4 h-4 mr-2" />
               Deploy to Firebase
             </Button>
@@ -337,9 +339,9 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                      {(hosting.provider === "cloudflare-pages" ||
-                        hosting.provider === "firebase-hosting") &&
-                        hostingDeployments && (
+                  {(hosting.provider === "cloudflare-pages" ||
+                    hosting.provider === "firebase-hosting") &&
+                    hostingDeployments && (
                       <div className="space-y-2">
                         <div className="text-sm font-medium">
                           Recent Deployments

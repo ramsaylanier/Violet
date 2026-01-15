@@ -32,14 +32,11 @@ export async function apiRequest<T>(
     headers
   });
 
-  console.log({ status: response.status });
-
   // Handle 401 Unauthorized - token may have expired
   if (response.status === 401 && retryOn401) {
     try {
       // Force refresh the token
       const refreshedToken = await getAuthToken(true);
-      console.log({ refreshedToken });
 
       if (!refreshedToken) {
         // User is logged out, throw error
@@ -68,15 +65,33 @@ export async function apiRequest<T>(
         const error = await retryResponse
           .json()
           .catch(() => ({ message: retryResponse.statusText }));
+
+        if (error.needsAuth) {
+          try {
+            const disconnectUrl = `${API_BASE_URL}/firebase/oauth/disconnect`;
+            await fetch(disconnectUrl, {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                ...(refreshedToken
+                  ? { Authorization: `Bearer ${refreshedToken}` }
+                  : {})
+              }
+            });
+          } catch (clearError) {
+            console.error("Failed to clear Google tokens:", clearError);
+          }
+        }
+
         throw new Error(
           error.message || `HTTP error! status: ${retryResponse.status}`
         );
       }
 
       return retryResponse.json();
-    } catch (error) {
-      // If token refresh failed or retry failed, throw the error
-      throw error;
+    } catch (error: unknown) {
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -84,6 +99,35 @@ export async function apiRequest<T>(
     const error = await response
       .json()
       .catch(() => ({ message: response.statusText }));
+
+    // Check if this is a Google auth error that requires reconnection
+    if (
+      error.needsAuth &&
+      (error.message?.includes("no refresh token available") ||
+        error.message?.includes(
+          "Token expired and no refresh token available"
+        ) ||
+        error.message?.includes("Please reconnect your Google account"))
+    ) {
+      // Automatically clear Google tokens from user profile
+      // We call the API directly to avoid circular dependency
+      try {
+        const token = await getAuthToken();
+        const disconnectUrl = `${API_BASE_URL}/firebase/oauth/disconnect`;
+        await fetch(disconnectUrl, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        });
+      } catch (clearError) {
+        console.error("Failed to clear Google tokens:", clearError);
+        // Continue anyway - we'll still throw the original error
+      }
+    }
+
     throw new Error(error.message || `HTTP error! status: ${response.status}`);
   }
 

@@ -444,8 +444,8 @@ function Settings() {
                       <DialogHeader>
                         <DialogTitle>Connect Cloudflare</DialogTitle>
                         <DialogDescription>
-                          Enter your Cloudflare Account API token. You can create
-                          one in the Cloudflare dashboard.
+                          Enter your Cloudflare Account API token. You can
+                          create one in the Cloudflare dashboard.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
@@ -484,12 +484,13 @@ function Settings() {
                               </a>
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              <strong>Recommended permissions:</strong> Zone Read,
-                              DNS Edit, Zone Settings Read
+                              <strong>Recommended permissions:</strong> Zone
+                              Read, DNS Edit, Zone Settings Read
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Account API Tokens are recommended for integrations
-                              as they are more durable and provide better control.
+                              Account API Tokens are recommended for
+                              integrations as they are more durable and provide
+                              better control.
                             </p>
                           </div>
                         </div>
@@ -507,7 +508,9 @@ function Settings() {
                         </Button>
                         <Button
                           onClick={handleConnectCloudflare}
-                          disabled={connectingCloudflare || !cloudflareToken.trim()}
+                          disabled={
+                            connectingCloudflare || !cloudflareToken.trim()
+                          }
                         >
                           {connectingCloudflare ? (
                             <>

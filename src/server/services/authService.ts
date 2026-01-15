@@ -36,7 +36,16 @@ export async function getUserProfile(userId: string): Promise<User | null> {
 
 export async function updateUserProfile(
   userId: string,
-  updates: Partial<Pick<User, "name" | "githubToken" | "googleToken" | "cloudflareToken">>
+  updates: Partial<
+    Pick<
+      User,
+      | "name"
+      | "githubToken"
+      | "googleToken"
+      | "googleRefreshToken"
+      | "cloudflareToken"
+    >
+  >
 ): Promise<void> {
   await adminDb.collection("users").doc(userId).update(updates);
 }
@@ -70,6 +79,18 @@ export async function verifyIdToken(idToken: string): Promise<string> {
         // Failed to decode emulator token, will throw original error
       }
     }
+
+    // Check if error is due to expired token
+    if (
+      errorMessage.includes("expired") ||
+      errorMessage.includes("token-expired") ||
+      errorMessage.includes("auth/id-token-expired")
+    ) {
+      const expiredError = new Error("Token expired");
+      (expiredError as any).code = "auth/id-token-expired";
+      throw expiredError;
+    }
+
     throw error;
   }
 }

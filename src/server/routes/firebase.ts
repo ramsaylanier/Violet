@@ -5,6 +5,7 @@
 import express from "express";
 import { getRequireAuth } from "./auth.js";
 import { adminDb } from "@/server/lib/firebase-admin";
+import { handleError } from "@/server/lib/error-handler";
 import {
   initializeFirestore,
   setupStorage,
@@ -310,13 +311,17 @@ router.get("/oauth/callback", async (req, res) => {
     }
 
     const accessToken = tokenData.access_token;
+    const refreshToken = tokenData.refresh_token;
 
     if (!accessToken) {
       throw new Error("No access token received");
     }
 
-    // Store the token in user profile
-    await updateUserProfile(userId, { googleToken: accessToken });
+    // Store both access token and refresh token in user profile
+    await updateUserProfile(userId, {
+      googleToken: accessToken,
+      googleRefreshToken: refreshToken
+    });
 
     // Clear state cookie
     res.clearCookie("google_oauth_state");
@@ -337,26 +342,22 @@ router.get("/oauth/callback", async (req, res) => {
 /**
  * POST /api/firebase/oauth/disconnect
  * Disconnect Google account
+ * Removes both access token and refresh token
  */
 router.post("/oauth/disconnect", async (req, res) => {
   try {
     const userId = await getRequireAuth(req);
 
-    // Remove the token from user profile using FieldValue.delete()
+    // Remove both tokens from user profile using FieldValue.delete()
     const { FieldValue } = await import("firebase-admin/firestore");
     await adminDb.collection("users").doc(userId).update({
-      googleToken: FieldValue.delete()
+      googleToken: FieldValue.delete(),
+      googleRefreshToken: FieldValue.delete()
     });
 
     res.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error disconnecting Google account:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error disconnecting Google account");
   }
 });
 
@@ -368,7 +369,7 @@ router.get("/projects", async (req, res) => {
   try {
     const userId = await getRequireAuth(req);
 
-    // Get user profile to retrieve Google OAuth token
+    // Get user profile to verify Google account is connected
     const userProfile = await getUserProfile(userId);
 
     if (!userProfile || !userProfile.googleToken) {
@@ -378,17 +379,12 @@ router.get("/projects", async (req, res) => {
       });
     }
 
-    const projects = await listFirebaseProjects(userProfile.googleToken);
+    // listFirebaseProjects now handles token refresh automatically
+    const projects = await listFirebaseProjects(userId);
 
     res.json(projects);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error listing Firebase projects:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error listing Firebase projects");
   }
 });
 
@@ -410,20 +406,12 @@ router.get("/sites/:firebaseProjectId", async (req, res) => {
       });
     }
 
-    const sites = await listHostingSites(
-      userProfile.googleToken,
-      firebaseProjectId
-    );
+    // listHostingSites now handles token refresh automatically
+    const sites = await listHostingSites(userId, firebaseProjectId);
 
     res.json(sites);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error listing hosting sites:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error listing hosting sites");
   }
 });
 
@@ -494,9 +482,9 @@ router.post("/deploy", async (req, res) => {
         // Build if needed
         const buildDir = await buildProject(extractPath, projectType);
 
-        // Deploy to Firebase Hosting
+        // Deploy to Firebase Hosting (now handles token refresh automatically)
         deployment = await deployToFirebaseHosting(
-          userProfile.googleToken,
+          userId,
           firebaseProjectId,
           hostingSiteId,
           buildDir
@@ -568,9 +556,9 @@ router.post("/deploy", async (req, res) => {
         // Build if needed
         const buildDir = await buildProject(extractPath, projectType);
 
-        // Deploy to Firebase Hosting
+        // Deploy to Firebase Hosting (now handles token refresh automatically)
         deployment = await deployToFirebaseHosting(
-          userProfile.googleToken,
+          userId,
           firebaseProjectId,
           hostingSiteId,
           buildDir
@@ -617,13 +605,7 @@ router.post("/deploy", async (req, res) => {
 
     res.json(deployment);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error deploying to Firebase Hosting:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error deploying to Firebase Hosting");
   }
 });
 
@@ -655,8 +637,9 @@ router.get("/deployments/:deploymentId/status", async (req, res) => {
       });
     }
 
+    // getDeploymentStatus now handles token refresh automatically
     const deployment = await getDeploymentStatus(
-      userProfile.googleToken,
+      userId,
       firebaseProjectId,
       siteId,
       deploymentId
@@ -664,13 +647,7 @@ router.get("/deployments/:deploymentId/status", async (req, res) => {
 
     res.json(deployment);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error getting deployment status:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error getting deployment status");
   }
 });
 
@@ -699,21 +676,12 @@ router.get("/sites/:siteId/domains", async (req, res) => {
       });
     }
 
-    const domains = await listFirebaseDomains(
-      userProfile.googleToken,
-      projectId,
-      siteId
-    );
+    // listFirebaseDomains now handles token refresh automatically
+    const domains = await listFirebaseDomains(userId, projectId, siteId);
 
     res.json(domains);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error listing Firebase domains:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error listing Firebase domains");
   }
 });
 
@@ -747,22 +715,12 @@ router.post("/sites/:siteId/domains", async (req, res) => {
       });
     }
 
-    const result = await addFirebaseDomain(
-      userProfile.googleToken,
-      projectId,
-      siteId,
-      domain
-    );
+    // addFirebaseDomain now handles token refresh automatically
+    const result = await addFirebaseDomain(userId, projectId, siteId, domain);
 
     res.json(result);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error adding Firebase domain:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error adding Firebase domain");
   }
 });
 
@@ -791,8 +749,9 @@ router.get("/sites/:siteId/domains/:domain/dns-records", async (req, res) => {
       });
     }
 
+    // getFirebaseDomainDNSRecords now handles token refresh automatically
     const dnsRecords = await getFirebaseDomainDNSRecords(
-      userProfile.googleToken,
+      userId,
       projectId,
       siteId,
       domain
@@ -800,13 +759,7 @@ router.get("/sites/:siteId/domains/:domain/dns-records", async (req, res) => {
 
     res.json(dnsRecords);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    console.error("Error getting Firebase domain DNS records:", error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : "Internal server error"
-    });
+    return handleError(error, res, "Error getting Firebase domain DNS records");
   }
 });
 

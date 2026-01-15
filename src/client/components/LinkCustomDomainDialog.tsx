@@ -13,7 +13,10 @@ import { Label } from "@/client/components/ui/label";
 import { Badge } from "@/client/components/ui/badge";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import type { Project } from "@/shared/types";
-import { addFirebaseDomain, getFirebaseDomainDNSRecords } from "@/client/api/firebase";
+import {
+  addFirebaseDomain,
+  getFirebaseDomainDNSRecords
+} from "@/client/api/firebase";
 import {
   listCloudflareZones,
   listCloudflareDNSRecords,

@@ -17,7 +17,12 @@ import {
 } from "@/client/components/ui/card";
 import { Button } from "@/client/components/ui/button";
 import { Badge } from "@/client/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/client/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/client/components/ui/tabs";
 import { Github, Flame, ArrowLeft, Globe, Rocket } from "lucide-react";
 import { ProjectOverview } from "@/client/components/ProjectOverview";
 import { ProjectSettings } from "@/client/components/ProjectSettings";

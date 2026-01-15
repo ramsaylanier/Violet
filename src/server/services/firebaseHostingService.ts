@@ -6,7 +6,11 @@ import { pipeline } from "stream/promises";
 import * as tar from "tar";
 import { gzip } from "zlib";
 import { promisify } from "util";
-import type { FirebaseHostingDeployment, FirebaseHostingSite } from "@/shared/types";
+import type {
+  FirebaseHostingDeployment,
+  FirebaseHostingSite
+} from "@/shared/types";
+import { withTokenRefresh } from "./googleTokenService";
 
 const gzipAsync = promisify(gzip);
 
@@ -337,230 +341,224 @@ export async function buildProject(
 
 /**
  * Deploy to Firebase Hosting using API
+ * Automatically refreshes token if expired
  */
 export async function deployToFirebaseHosting(
-  googleToken: string,
+  userId: string,
   firebaseProjectId: string,
   siteId: string,
   buildDir: string
 ): Promise<FirebaseHostingDeployment> {
-  try {
-    // Step 1: Create a new version
-    const versionResponse = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/versions`,
-      {
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      // Step 1: Create a new version
+      const versionResponse = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/versions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            config: {
+              headers: [
+                {
+                  glob: "**",
+                  headers: {
+                    "Cache-Control": "max-age=3600"
+                  }
+                }
+              ]
+            }
+          })
+        }
+      );
+
+      if (!versionResponse.ok) {
+        const errorData = await versionResponse.json().catch(() => ({}));
+        const errorText = await versionResponse.text().catch(() => "");
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to create version: ${versionResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
+        );
+      }
+
+      const versionData = await versionResponse.json();
+      const versionName = versionData.name;
+
+      if (!versionName) {
+        console.error(
+          "Version creation response:",
+          JSON.stringify(versionData, null, 2)
+        );
+        throw new Error(
+          "Version name not returned from version creation. Response: " +
+            JSON.stringify(versionData)
+        );
+      }
+
+      // Step 2: Get list of files and prepare for upload
+      const files = await getAllFiles(buildDir);
+      const fileHashes: Record<string, string> = {};
+      const fileContents: Record<string, Buffer> = {};
+
+      // Calculate hashes for all files (must be gzipped first)
+      for (const file of files) {
+        const fullPath = path.join(buildDir, file);
+        const content = await fs.readFile(fullPath);
+        fileContents[file] = content;
+
+        // Gzip the file content before hashing
+        const gzippedContent = await gzipAsync(content);
+        // File paths must start with /
+        const filePath = file.startsWith("/") ? file : `/${file}`;
+        fileHashes[filePath] = await calculateHash(gzippedContent);
+      }
+
+      // Step 3: Populate files (get upload URLs)
+      // versionName should be in format: sites/{siteId}/versions/{versionId}
+      // We need to use the full API URL
+      const populateUrl = versionName.startsWith("https://")
+        ? `${versionName}:populateFiles`
+        : `https://firebasehosting.googleapis.com/v1beta1/${versionName}:populateFiles`;
+
+      const populateResponse = await fetch(populateUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${googleToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          config: {
-            headers: [
-              {
-                glob: "**",
-                headers: {
-                  "Cache-Control": "max-age=3600"
-                }
-              }
-            ]
-          }
+          files: fileHashes
         })
-      }
-    );
-
-    if (!versionResponse.ok) {
-      const errorData = await versionResponse.json().catch(() => ({}));
-      const errorText = await versionResponse.text().catch(() => "");
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to create version: ${versionResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
-      );
-    }
-
-    const versionData = await versionResponse.json();
-    const versionName = versionData.name;
-
-    if (!versionName) {
-      console.error(
-        "Version creation response:",
-        JSON.stringify(versionData, null, 2)
-      );
-      throw new Error(
-        "Version name not returned from version creation. Response: " +
-          JSON.stringify(versionData)
-      );
-    }
-
-    console.log("Created version:", versionName);
-
-    // Step 2: Get list of files and prepare for upload
-    const files = await getAllFiles(buildDir);
-    const fileHashes: Record<string, string> = {};
-    const fileContents: Record<string, Buffer> = {};
-
-    // Calculate hashes for all files (must be gzipped first)
-    for (const file of files) {
-      const fullPath = path.join(buildDir, file);
-      const content = await fs.readFile(fullPath);
-      fileContents[file] = content;
-
-      // Gzip the file content before hashing
-      const gzippedContent = await gzipAsync(content);
-      // File paths must start with /
-      const filePath = file.startsWith("/") ? file : `/${file}`;
-      fileHashes[filePath] = await calculateHash(gzippedContent);
-    }
-
-    // Step 3: Populate files (get upload URLs)
-    // versionName should be in format: sites/{siteId}/versions/{versionId}
-    // We need to use the full API URL
-    const populateUrl = versionName.startsWith("https://")
-      ? `${versionName}:populateFiles`
-      : `https://firebasehosting.googleapis.com/v1beta1/${versionName}:populateFiles`;
-
-    console.log("Populate files URL:", populateUrl);
-    console.log("Files to populate:", Object.keys(fileHashes).length);
-
-    const populateResponse = await fetch(populateUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${googleToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        files: fileHashes
-      })
-    });
-
-    if (!populateResponse.ok) {
-      const errorData = await populateResponse.json().catch(() => ({}));
-      const errorText = await populateResponse.text().catch(() => "");
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to populate files: ${populateResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
-      );
-    }
-
-    const populateData = await populateResponse.json();
-    const uploadRequiredHashes = populateData.uploadRequiredHashes || [];
-    const uploadUrl = populateData.uploadUrl;
-
-    if (!uploadUrl) {
-      throw new Error("Upload URL not returned from populateFiles");
-    }
-
-    // Step 4: Upload files that need uploading (as gzipped)
-    const uploadPromises = uploadRequiredHashes.map(async (hash: string) => {
-      // Find the file path that matches this hash
-      const filePath = Object.keys(fileHashes).find(
-        (f) => fileHashes[f] === hash
-      );
-      if (!filePath) {
-        console.warn(`File not found for hash: ${hash}`);
-        return;
-      }
-
-      // Remove leading / to get relative path
-      const relativePath = filePath.startsWith("/")
-        ? filePath.slice(1)
-        : filePath;
-      const content = fileContents[relativePath];
-      if (!content) {
-        console.warn(`Content not found for file: ${relativePath}`);
-        return;
-      }
-
-      // Gzip the content for upload
-      const gzippedContent = await gzipAsync(content);
-
-      // Upload to the specific hash endpoint
-      const fileUploadUrl = `${uploadUrl}/${hash}`;
-
-      const uploadResponse = await fetch(fileUploadUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/octet-stream"
-        },
-        body: gzippedContent
       });
 
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text().catch(() => "");
+      if (!populateResponse.ok) {
+        const errorData = await populateResponse.json().catch(() => ({}));
+        const errorText = await populateResponse.text().catch(() => "");
         throw new Error(
-          `Failed to upload file ${filePath}: ${uploadResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
+          errorData.error?.message ||
+            `Failed to populate files: ${populateResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
         );
       }
-    });
 
-    await Promise.all(uploadPromises);
+      const populateData = await populateResponse.json();
+      const uploadRequiredHashes = populateData.uploadRequiredHashes || [];
+      const uploadUrl = populateData.uploadUrl;
 
-    // Step 5: Finalize version (update status to FINALIZED)
-    // According to docs: PATCH with update_mask=status
-    const finalizeUrl = versionName.startsWith("https://")
-      ? `${versionName}?update_mask=status`
-      : `https://firebasehosting.googleapis.com/v1beta1/${versionName}?update_mask=status`;
-
-    console.log("Finalize version URL:", finalizeUrl);
-
-    const finalizeResponse = await fetch(finalizeUrl, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${googleToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        status: "FINALIZED"
-      })
-    });
-
-    if (!finalizeResponse.ok) {
-      const errorData = await finalizeResponse.json().catch(() => ({}));
-      const errorText = await finalizeResponse.text().catch(() => "");
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to finalize version: ${finalizeResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
-      );
-    }
-
-    // Step 6: Create release
-    // According to docs: POST with versionName as query parameter
-    const releaseUrl = `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/releases?versionName=${encodeURIComponent(versionName)}`;
-
-    console.log("Create release URL:", releaseUrl);
-
-    const releaseResponse = await fetch(releaseUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${googleToken}`
+      if (!uploadUrl) {
+        throw new Error("Upload URL not returned from populateFiles");
       }
-    });
 
-    if (!releaseResponse.ok) {
-      const errorData = await releaseResponse.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to create release: ${releaseResponse.statusText}`
-      );
+      // Step 4: Upload files that need uploading (as gzipped)
+      const uploadPromises = uploadRequiredHashes.map(async (hash: string) => {
+        // Find the file path that matches this hash
+        const filePath = Object.keys(fileHashes).find(
+          (f) => fileHashes[f] === hash
+        );
+        if (!filePath) {
+          console.warn(`File not found for hash: ${hash}`);
+          return;
+        }
+
+        // Remove leading / to get relative path
+        const relativePath = filePath.startsWith("/")
+          ? filePath.slice(1)
+          : filePath;
+        const content = fileContents[relativePath];
+        if (!content) {
+          console.warn(`Content not found for file: ${relativePath}`);
+          return;
+        }
+
+        // Gzip the content for upload
+        const gzippedContent = await gzipAsync(content);
+
+        // Upload to the specific hash endpoint
+        const fileUploadUrl = `${uploadUrl}/${hash}`;
+
+        const uploadResponse = await fetch(fileUploadUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/octet-stream"
+          },
+          body: gzippedContent
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text().catch(() => "");
+          throw new Error(
+            `Failed to upload file ${filePath}: ${uploadResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
+          );
+        }
+      });
+
+      await Promise.all(uploadPromises);
+
+      // Step 5: Finalize version (update status to FINALIZED)
+      // According to docs: PATCH with update_mask=status
+      const finalizeUrl = versionName.startsWith("https://")
+        ? `${versionName}?update_mask=status`
+        : `https://firebasehosting.googleapis.com/v1beta1/${versionName}?update_mask=status`;
+
+      const finalizeResponse = await fetch(finalizeUrl, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: "FINALIZED"
+        })
+      });
+
+      if (!finalizeResponse.ok) {
+        const errorData = await finalizeResponse.json().catch(() => ({}));
+        const errorText = await finalizeResponse.text().catch(() => "");
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to finalize version: ${finalizeResponse.statusText}${errorText ? ` - ${errorText}` : ""}`
+        );
+      }
+
+      // Step 6: Create release
+      // According to docs: POST with versionName as query parameter
+      const releaseUrl = `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/releases?versionName=${encodeURIComponent(versionName)}`;
+
+      const releaseResponse = await fetch(releaseUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (!releaseResponse.ok) {
+        const errorData = await releaseResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to create release: ${releaseResponse.statusText}`
+        );
+      }
+
+      const releaseData = await releaseResponse.json();
+
+      return {
+        id: releaseData.name?.split("/").pop() || "",
+        siteId,
+        version: versionName,
+        status: "success",
+        url: `https://${siteId}.web.app`,
+        createdAt: new Date(),
+        completedAt: new Date(),
+        method: "api"
+      };
+    } catch (error) {
+      console.error("Error deploying to Firebase Hosting:", error);
+      throw error;
     }
-
-    const releaseData = await releaseResponse.json();
-
-    return {
-      id: releaseData.name?.split("/").pop() || "",
-      siteId,
-      version: versionName,
-      status: "success",
-      url: `https://${siteId}.web.app`,
-      createdAt: new Date(),
-      completedAt: new Date(),
-      method: "api"
-    };
-  } catch (error) {
-    console.error("Error deploying to Firebase Hosting:", error);
-    throw error;
-  }
+  });
 }
 
 /**
@@ -598,96 +596,103 @@ async function calculateHash(content: Buffer): Promise<string> {
 
 /**
  * Get deployment status
+ * Automatically refreshes token if expired
  */
 export async function getDeploymentStatus(
-  googleToken: string,
+  userId: string,
   firebaseProjectId: string,
   siteId: string,
   deploymentId: string
 ): Promise<FirebaseHostingDeployment> {
-  try {
-    const response = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/releases/${deploymentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      const response = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/sites/${siteId}/releases/${deploymentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to get deployment status: ${response.statusText}`
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to get deployment status: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      return {
+        id: deploymentId,
+        siteId,
+        version: data.versionName || "",
+        status: data.releaseTime ? "success" : "in_progress",
+        url: `https://${siteId}.web.app`,
+        createdAt: data.createTime ? new Date(data.createTime) : new Date(),
+        completedAt: data.releaseTime ? new Date(data.releaseTime) : undefined,
+        method: "api"
+      };
+    } catch (error) {
+      console.error("Error getting deployment status:", error);
+      throw error;
     }
-
-    const data = await response.json();
-
-    return {
-      id: deploymentId,
-      siteId,
-      version: data.versionName || "",
-      status: data.releaseTime ? "success" : "in_progress",
-      url: `https://${siteId}.web.app`,
-      createdAt: data.createTime ? new Date(data.createTime) : new Date(),
-      completedAt: data.releaseTime ? new Date(data.releaseTime) : undefined,
-      method: "api"
-    };
-  } catch (error) {
-    console.error("Error getting deployment status:", error);
-    throw error;
-  }
+  });
 }
 
 /**
  * List hosting sites for a Firebase project
+ * Automatically refreshes token if expired
  */
 export async function listHostingSites(
-  googleToken: string,
+  userId: string,
   firebaseProjectId: string
 ): Promise<FirebaseHostingSite[]> {
-  try {
-    const response = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/projects/${firebaseProjectId}/sites`,
-      {
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      const response = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/projects/${firebaseProjectId}/sites`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to list hosting sites: ${response.statusText}`
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to list hosting sites: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      const sites = data.sites || [];
+
+      return sites.map((site: any) => ({
+        name: site.name || "",
+        siteId: site.siteId || site.name?.split("/").pop() || "",
+        defaultUrl: site.defaultUrl || `https://${site.siteId || ""}.web.app`,
+        appId: site.appId
+      }));
+    } catch (error) {
+      console.error("Error listing hosting sites:", error);
+      throw error;
     }
-
-    const data = await response.json();
-    const sites = data.sites || [];
-
-    return sites.map((site: any) => ({
-      name: site.name || "",
-      siteId: site.siteId || site.name?.split("/").pop() || "",
-      defaultUrl: site.defaultUrl || `https://${site.siteId || ""}.web.app`,
-      appId: site.appId
-    }));
-  } catch (error) {
-    console.error("Error listing hosting sites:", error);
-    throw error;
-  }
+  });
 }
 
 /**
  * List custom domains for a Firebase Hosting site
+ * Automatically refreshes token if expired
  */
 export async function listFirebaseDomains(
-  googleToken: string,
+  userId: string,
   projectId: string,
   siteId: string
 ): Promise<
@@ -701,46 +706,49 @@ export async function listFirebaseDomains(
     };
   }>
 > {
-  try {
-    const response = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains`,
-      {
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      const response = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to list domains: ${response.statusText}`
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to list domains: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      const domains = data.customDomains || [];
+
+      return domains.map((domain: any) => ({
+        domain: domain.name || domain.domain || "",
+        status: domain.status || "UNKNOWN",
+        updateTime: domain.updateTime,
+        provisioning: domain.provisioning
+      }));
+    } catch (error) {
+      console.error("Error listing Firebase domains:", error);
+      throw error;
     }
-
-    const data = await response.json();
-    const domains = data.customDomains || [];
-
-    return domains.map((domain: any) => ({
-      domain: domain.name || domain.domain || "",
-      status: domain.status || "UNKNOWN",
-      updateTime: domain.updateTime,
-      provisioning: domain.provisioning
-    }));
-  } catch (error) {
-    console.error("Error listing Firebase domains:", error);
-    throw error;
-  }
+  });
 }
 
 /**
  * Add a custom domain to a Firebase Hosting site
  * Uses the official Firebase Hosting API v1beta1 endpoint
+ * Automatically refreshes token if expired
  */
 export async function addFirebaseDomain(
-  googleToken: string,
+  userId: string,
   projectId: string,
   siteId: string,
   domain: string
@@ -753,49 +761,52 @@ export async function addFirebaseDomain(
     dnsStatus?: string;
   };
 }> {
-  try {
-    const response = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains?customDomainId=${domain}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      const response = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains?customDomainId=${domain}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to add domain: ${response.statusText}`
       );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to add domain: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // The API returns the domain name in the 'name' field
+      const domainName = data.name || domain;
+
+      return {
+        domain: domainName,
+        status: data.status || "PENDING",
+        updateTime: data.updateTime,
+        provisioning: data.provisioning
+      };
+    } catch (error) {
+      console.error("Error adding Firebase domain:", error);
+      throw error;
     }
-
-    const data = await response.json();
-
-    // The API returns the domain name in the 'name' field
-    const domainName = data.name || domain;
-
-    return {
-      domain: domainName,
-      status: data.status || "PENDING",
-      updateTime: data.updateTime,
-      provisioning: data.provisioning
-    };
-  } catch (error) {
-    console.error("Error adding Firebase domain:", error);
-    throw error;
-  }
+  });
 }
 
 /**
  * Get DNS records required for a Firebase Hosting custom domain
  * Returns the DNS records that need to be configured for the domain to work
+ * Automatically refreshes token if expired
  */
 export async function getFirebaseDomainDNSRecords(
-  googleToken: string,
+  userId: string,
   projectId: string,
   siteId: string,
   domain: string
@@ -807,61 +818,58 @@ export async function getFirebaseDomainDNSRecords(
     requiredAction?: string;
   }>
 > {
-  try {
-    // First, get the custom domain details which includes DNS record set
-    const response = await fetch(
-      `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains/${domain}`,
-      {
-        headers: {
-          Authorization: `Bearer ${googleToken}`,
-          "Content-Type": "application/json"
+  return withTokenRefresh(userId, async (accessToken) => {
+    try {
+      // First, get the custom domain details which includes DNS record set
+      const response = await fetch(
+        `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites/${siteId}/customDomains/${domain}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error?.message ||
-          `Failed to get domain DNS records: ${response.statusText}`
       );
-    }
 
-    const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to get domain DNS records: ${response.statusText}`
+        );
+      }
 
-    console.log({ updates: data.requiredDnsUpdates.desired });
+      const data = await response.json();
+      // The API returns DNS records in the dnsUpdates field
+      // According to Firebase API, this contains the required DNS records
+      const dnsRecords: Array<{
+        domainName: string;
+        type: string;
+        rdata: string;
+        requiredAction?: string;
+      }> = [];
 
-    // The API returns DNS records in the dnsUpdates field
-    // According to Firebase API, this contains the required DNS records
-    const dnsRecords: Array<{
-      domainName: string;
-      type: string;
-      rdata: string;
-      requiredAction?: string;
-    }> = [];
-
-    if (dnsRecords.length === 0 && data.requiredDnsUpdates?.desired) {
-      if (Array.isArray(data.requiredDnsUpdates.desired)) {
-        for (const dnsUpdate of data.requiredDnsUpdates.desired) {
-          console.log({ dnsUpdate });
-          if (dnsUpdate.records && Array.isArray(dnsUpdate.records)) {
-            for (const record of dnsUpdate.records) {
-              console.log({ record });
-              dnsRecords.push({
-                domainName: record.domainName || domain,
-                type: record.type || "",
-                rdata: record.rdata || "",
-                requiredAction: record.requiredAction
-              });
+      if (dnsRecords.length === 0 && data.requiredDnsUpdates?.desired) {
+        if (Array.isArray(data.requiredDnsUpdates.desired)) {
+          for (const dnsUpdate of data.requiredDnsUpdates.desired) {
+            if (dnsUpdate.records && Array.isArray(dnsUpdate.records)) {
+              for (const record of dnsUpdate.records) {
+                dnsRecords.push({
+                  domainName: record.domainName || domain,
+                  type: record.type || "",
+                  rdata: record.rdata || "",
+                  requiredAction: record.requiredAction
+                });
+              }
             }
           }
         }
       }
-    }
 
-    return dnsRecords;
-  } catch (error) {
-    console.error("Error getting Firebase domain DNS records:", error);
-    throw error;
-  }
+      return dnsRecords;
+    } catch (error) {
+      console.error("Error getting Firebase domain DNS records:", error);
+      throw error;
+    }
+  });
 }

@@ -13,7 +13,12 @@ import {
   Plus,
   Flame
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/client/components/ui/card";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -69,7 +74,10 @@ import { updateProject } from "@/client/api/projects";
 import { EmptyState } from "@/client/components/shared/EmptyState";
 import { DNSRecordDialog } from "./DNSRecordDialog";
 import { deleteCloudflareDNSRecord } from "@/client/api/cloudflare";
-import { listFirebaseHostingSites, addFirebaseDomain } from "@/client/api/firebase";
+import {
+  listFirebaseHostingSites,
+  addFirebaseDomain
+} from "@/client/api/firebase";
 import { Input } from "@/client/components/ui/input";
 
 interface ProjectDomainsProps {

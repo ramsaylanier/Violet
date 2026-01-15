@@ -1,5 +1,9 @@
 import admin from "firebase-admin";
 import type { FirebaseProject } from "@/shared/types";
+import {
+  fetchWithTokenRefresh,
+  AuthenticationError
+} from "./googleTokenService";
 
 // Note: Firebase Admin SDK project creation requires billing-enabled projects
 // This service handles Firestore, Storage, and Hosting setup for existing projects
@@ -141,16 +145,17 @@ export async function getFirebaseProjectMetadata(
 /**
  * List Firebase projects for the authenticated user
  * Requires Google OAuth token with Firebase Management API access
+ * Automatically refreshes token if expired
  */
 export async function listFirebaseProjects(
-  accessToken: string
+  userId: string
 ): Promise<FirebaseProject[]> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTokenRefresh(
+      userId,
       "https://firebase.googleapis.com/v1beta1/projects",
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         }
       }
@@ -163,6 +168,18 @@ export async function listFirebaseProjects(
         statusText: response.statusText,
         errorData
       });
+
+      // If it's an authentication error, preserve it
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthenticationError(
+          errorData.error?.message ||
+            `Authentication failed: ${response.statusText}`,
+          response.status,
+          true
+        );
+      }
+
+      // For other errors, throw a generic error
       throw new Error(
         errorData.error?.message ||
           `Failed to list Firebase projects: ${response.statusText}`

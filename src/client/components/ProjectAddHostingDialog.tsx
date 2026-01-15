@@ -19,10 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/client/components/ui/select";
-import type {
-  Project,
-  HostingProvider
-} from "@/shared/types";
+import type { Project, HostingProvider } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import {
   getCloudflareAccountId,
@@ -72,30 +69,30 @@ export function ProjectAddHostingDialog({
   const hasFirebaseProject = !!project.firebaseProjectId;
 
   // Query for Cloudflare account ID
-  const {
-    data: accountId,
-    isLoading: isLoadingAccountId
-  } = useQuery({
+  const { data: accountId, isLoading: isLoadingAccountId } = useQuery({
     queryKey: ["cloudflare-account-id"],
     queryFn: async () => {
       const { accountId: id } = await getCloudflareAccountId();
       return id;
     },
-    enabled: open && selectedProvider === "cloudflare-pages" && isCloudflareConnected
+    enabled:
+      open && selectedProvider === "cloudflare-pages" && isCloudflareConnected
   });
 
   // Query for Cloudflare Pages projects
-  const {
-    data: availablePagesProjects = [],
-    isLoading: loadingPagesProjects
-  } = useQuery({
-    queryKey: ["cloudflare-pages-projects", accountId],
-    queryFn: async () => {
-      if (!accountId) throw new Error("Account ID required");
-      return listCloudflarePagesProjects(accountId);
-    },
-    enabled: !!accountId && open && selectedProvider === "cloudflare-pages" && isCloudflareConnected
-  });
+  const { data: availablePagesProjects = [], isLoading: loadingPagesProjects } =
+    useQuery({
+      queryKey: ["cloudflare-pages-projects", accountId],
+      queryFn: async () => {
+        if (!accountId) throw new Error("Account ID required");
+        return listCloudflarePagesProjects(accountId);
+      },
+      enabled:
+        !!accountId &&
+        open &&
+        selectedProvider === "cloudflare-pages" &&
+        isCloudflareConnected
+    });
 
   // Mutation for creating Cloudflare Pages project
   const createPagesProjectMutation = useMutation({
@@ -110,14 +107,16 @@ export function ProjectAddHostingDialog({
 
   // Mutation for updating project with hosting
   const updateProjectMutation = useMutation({
-    mutationFn: async (hosting: Array<{
-      id: string;
-      provider: "cloudflare-pages" | "firebase-hosting";
-      name: string;
-      url?: string;
-      status?: string;
-      linkedAt: Date;
-    }>) => {
+    mutationFn: async (
+      hosting: Array<{
+        id: string;
+        provider: "cloudflare-pages" | "firebase-hosting";
+        name: string;
+        url?: string;
+        status?: string;
+        linkedAt: Date;
+      }>
+    ) => {
       return updateProject(project.id, { hosting });
     },
     onSuccess: (updatedProject) => {
@@ -151,8 +150,7 @@ export function ProjectAddHostingDialog({
         if (
           projectHosting.some(
             (h) =>
-              h.provider === "cloudflare-pages" &&
-              h.name === pagesProject.name
+              h.provider === "cloudflare-pages" && h.name === pagesProject.name
           )
         ) {
           setError("This hosting project is already linked");
@@ -304,10 +302,7 @@ export function ProjectAddHostingDialog({
                   <p className="mb-2">
                     Cloudflare account required for Cloudflare Pages.
                   </p>
-                  <a
-                    href="/settings"
-                    className="text-primary hover:underline"
-                  >
+                  <a href="/settings" className="text-primary hover:underline">
                     Connect Cloudflare in settings
                   </a>
                 </div>
@@ -375,9 +370,7 @@ export function ProjectAddHostingDialog({
                   ) : (
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="pages-project-name">
-                          Project Name
-                        </Label>
+                        <Label htmlFor="pages-project-name">Project Name</Label>
                         <Input
                           id="pages-project-name"
                           value={newPagesProjectName}
@@ -413,12 +406,8 @@ export function ProjectAddHostingDialog({
             <div className="space-y-4">
               {!hasFirebaseProject ? (
                 <div className="text-sm text-muted-foreground p-4 bg-muted rounded-md">
-                  <p className="mb-2">
-                    Firebase project must be linked first.
-                  </p>
-                  <p>
-                    Go to the Integrations tab to link a Firebase project.
-                  </p>
+                  <p className="mb-2">Firebase project must be linked first.</p>
+                  <p>Go to the Integrations tab to link a Firebase project.</p>
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground p-4 bg-muted rounded-md">

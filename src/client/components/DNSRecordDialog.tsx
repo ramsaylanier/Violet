@@ -49,9 +49,7 @@ export function DNSRecordDialog({
   const [content, setContent] = useState(record?.content || "");
   const [ttl, setTtl] = useState(record?.ttl?.toString() || "3600");
   const [proxied, setProxied] = useState(record?.proxied || false);
-  const [priority, setPriority] = useState(
-    record?.priority?.toString() || ""
-  );
+  const [priority, setPriority] = useState(record?.priority?.toString() || "");
 
   const isEdit = !!record;
 

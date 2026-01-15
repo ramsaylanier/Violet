@@ -25,7 +25,10 @@ import {
   deletePagesProject
 } from "@/server/services/cloudflareService";
 import { getRequireAuth } from "./auth.js";
-import { getUserProfile, updateUserProfile } from "@/server/services/authService";
+import {
+  getUserProfile,
+  updateUserProfile
+} from "@/server/services/authService";
 import { encryptToken, decryptToken } from "@/server/lib/encryption";
 import { adminDb } from "@/server/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
