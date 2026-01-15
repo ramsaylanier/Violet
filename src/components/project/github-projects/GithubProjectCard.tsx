@@ -10,8 +10,6 @@ interface GithubProjectCardProps {
 }
 
 export function GithubProjectCard({ project }: GithubProjectCardProps) {
-  console.log({ project });
-
   return (
     <Card>
       <CardHeader>

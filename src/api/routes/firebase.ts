@@ -13,7 +13,23 @@ import {
   verifyFirebaseProject,
   getFirebaseProjectMetadata
 } from "@/services/firebaseService";
+import {
+  downloadGitHubTarball,
+  downloadGitLabTarball,
+  extractTarball,
+  detectProjectType,
+  buildProject,
+  deployToFirebaseHosting,
+  getDeploymentStatus,
+  listHostingSites,
+  listFirebaseDomains,
+  addFirebaseDomain,
+  getFirebaseDomainDNSRecords
+} from "@/services/firebaseHostingService";
 import { getUserProfile, updateUserProfile } from "@/services/authService";
+import { tmpdir } from "os";
+import * as path from "path";
+import * as fs from "fs/promises";
 
 const router = express.Router();
 
@@ -203,11 +219,11 @@ router.get("/oauth/authorize", async (req, res) => {
       process.env.GOOGLE_OAUTH_CALLBACK_URL ||
       `${req.protocol}://${req.get("host")}/api/firebase/oauth/callback`;
 
-    // OAuth scopes for Firebase Management API
-    // https://www.googleapis.com/auth/firebase.readonly - Read-only access to Firebase projects
-    // https://www.googleapis.com/auth/cloud-platform.read-only - Read-only access to Google Cloud Platform
+    // OAuth scopes for Firebase Management API and Hosting
+    // https://www.googleapis.com/auth/firebase - Full access to Firebase (required for deployments)
+    // https://www.googleapis.com/auth/cloud-platform - Full access to Google Cloud Platform (required for deployments)
     const scope = encodeURIComponent(
-      "https://www.googleapis.com/auth/firebase.readonly https://www.googleapis.com/auth/cloud-platform.read-only"
+      "https://www.googleapis.com/auth/firebase https://www.googleapis.com/auth/cloud-platform"
     );
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
@@ -366,6 +382,424 @@ router.get("/projects", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error listing Firebase projects:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/firebase/sites/:firebaseProjectId
+ * List hosting sites for a Firebase project
+ */
+router.get("/sites/:firebaseProjectId", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { firebaseProjectId } = req.params;
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const sites = await listHostingSites(
+      userProfile.googleToken,
+      firebaseProjectId
+    );
+
+    res.json(sites);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing hosting sites:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * POST /api/firebase/deploy
+ * Deploy a repository to Firebase Hosting
+ */
+router.post("/deploy", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { repository, firebaseProjectId, siteId } = req.body as {
+      projectId: string;
+      repository: {
+        owner: string;
+        name: string;
+        branch?: string;
+        provider: "github" | "gitlab";
+      };
+      firebaseProjectId: string;
+      siteId?: string;
+    };
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    // Default siteId to firebaseProjectId if not provided
+    const hostingSiteId = siteId || firebaseProjectId;
+
+    let deployment;
+    let tarballPath: string | null = null;
+    let extractPath: string | null = null;
+
+    if (repository.provider === "github") {
+      // Use tarball download + API deployment (same as GitLab)
+      // Note: Firebase's "native" GitHub integration uses GitHub Actions
+      // which requires setup in the repo. For API-based deployment, we use tarball.
+      if (!userProfile.githubToken) {
+        return res.status(400).json({
+          error: "GitHub account not connected"
+        });
+      }
+
+      // Download and extract tarball
+      tarballPath = await downloadGitHubTarball(
+        userProfile.githubToken,
+        repository.owner,
+        repository.name,
+        repository.branch || "main"
+      );
+
+      extractPath = path.join(
+        tmpdir(),
+        `github-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`
+      );
+
+      try {
+        await extractTarball(tarballPath, extractPath);
+
+        // Detect project type
+        const projectType = await detectProjectType(extractPath);
+
+        // Build if needed
+        const buildDir = await buildProject(extractPath, projectType);
+
+        // Deploy to Firebase Hosting
+        deployment = await deployToFirebaseHosting(
+          userProfile.googleToken,
+          firebaseProjectId,
+          hostingSiteId,
+          buildDir
+        );
+
+        deployment.repository = {
+          owner: repository.owner,
+          name: repository.name,
+          branch: repository.branch || "main",
+          provider: "github"
+        };
+
+        // Clean up temporary directory after successful deployment
+        if (extractPath) {
+          await fs
+            .rm(extractPath, { recursive: true, force: true })
+            .catch((cleanupError) => {
+              console.warn(
+                "Failed to cleanup extract directory:",
+                cleanupError
+              );
+              // Don't throw - deployment was successful
+            });
+        }
+      } catch (error) {
+        // Clean up on error - ensure we try to remove both extract path and tarball
+        await Promise.all([
+          extractPath
+            ? fs
+                .rm(extractPath, { recursive: true, force: true })
+                .catch(() => {})
+            : Promise.resolve(),
+          tarballPath
+            ? fs.unlink(tarballPath).catch(() => {})
+            : Promise.resolve()
+        ]);
+        throw error;
+      }
+    } else if (repository.provider === "gitlab") {
+      // Use tarball download + API deployment
+      // Note: GitLab token would need to be added to User type
+      // For now, we'll return an error if not available
+      const gitlabToken = (userProfile as any).gitlabToken;
+      if (!gitlabToken) {
+        return res.status(400).json({
+          error: "GitLab account not connected"
+        });
+      }
+
+      // Download and extract tarball
+      tarballPath = await downloadGitLabTarball(
+        gitlabToken,
+        repository.owner,
+        repository.name,
+        repository.branch || "main"
+      );
+
+      extractPath = path.join(
+        tmpdir(),
+        `gitlab-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`
+      );
+
+      try {
+        await extractTarball(tarballPath, extractPath);
+
+        // Detect project type
+        const projectType = await detectProjectType(extractPath);
+
+        // Build if needed
+        const buildDir = await buildProject(extractPath, projectType);
+
+        // Deploy to Firebase Hosting
+        deployment = await deployToFirebaseHosting(
+          userProfile.googleToken,
+          firebaseProjectId,
+          hostingSiteId,
+          buildDir
+        );
+
+        deployment.repository = {
+          owner: repository.owner,
+          name: repository.name,
+          branch: repository.branch || "main",
+          provider: "gitlab"
+        };
+
+        // Clean up temporary directory after successful deployment
+        if (extractPath) {
+          await fs
+            .rm(extractPath, { recursive: true, force: true })
+            .catch((cleanupError) => {
+              console.warn(
+                "Failed to cleanup extract directory:",
+                cleanupError
+              );
+              // Don't throw - deployment was successful
+            });
+        }
+      } catch (error) {
+        // Clean up on error - ensure we try to remove both extract path and tarball
+        await Promise.all([
+          extractPath
+            ? fs
+                .rm(extractPath, { recursive: true, force: true })
+                .catch(() => {})
+            : Promise.resolve(),
+          tarballPath
+            ? fs.unlink(tarballPath).catch(() => {})
+            : Promise.resolve()
+        ]);
+        throw error;
+      }
+    } else {
+      return res.status(400).json({
+        error: "Unsupported repository provider"
+      });
+    }
+
+    res.json(deployment);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error deploying to Firebase Hosting:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/firebase/deployments/:deploymentId/status
+ * Get deployment status
+ */
+router.get("/deployments/:deploymentId/status", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { deploymentId } = req.params;
+    const { firebaseProjectId, siteId } = req.query as {
+      firebaseProjectId: string;
+      siteId: string;
+    };
+
+    if (!firebaseProjectId || !siteId) {
+      return res.status(400).json({
+        error: "firebaseProjectId and siteId are required"
+      });
+    }
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const deployment = await getDeploymentStatus(
+      userProfile.googleToken,
+      firebaseProjectId,
+      siteId,
+      deploymentId
+    );
+
+    res.json(deployment);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting deployment status:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/firebase/sites/:siteId/domains
+ * List custom domains for a Firebase Hosting site
+ */
+router.get("/sites/:siteId/domains", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { siteId } = req.params;
+    const { projectId } = req.query as { projectId?: string };
+
+    if (!projectId) {
+      return res
+        .status(400)
+        .json({ error: "projectId query parameter is required" });
+    }
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const domains = await listFirebaseDomains(
+      userProfile.googleToken,
+      projectId,
+      siteId
+    );
+
+    res.json(domains);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing Firebase domains:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * POST /api/firebase/sites/:siteId/domains
+ * Add a custom domain to a Firebase Hosting site
+ */
+router.post("/sites/:siteId/domains", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { siteId } = req.params;
+    const { domain, projectId } = req.body as {
+      domain: string;
+      projectId: string;
+    };
+
+    if (!domain) {
+      return res.status(400).json({ error: "Domain is required" });
+    }
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const result = await addFirebaseDomain(
+      userProfile.googleToken,
+      projectId,
+      siteId,
+      domain
+    );
+
+    res.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error adding Firebase domain:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/firebase/sites/:siteId/domains/:domain/dns-records
+ * Get DNS records required for a Firebase Hosting custom domain
+ */
+router.get("/sites/:siteId/domains/:domain/dns-records", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { siteId, domain } = req.params;
+    const { projectId } = req.query as { projectId?: string };
+
+    if (!projectId) {
+      return res
+        .status(400)
+        .json({ error: "projectId query parameter is required" });
+    }
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const dnsRecords = await getFirebaseDomainDNSRecords(
+      userProfile.googleToken,
+      projectId,
+      siteId,
+      domain
+    );
+
+    res.json(dnsRecords);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting Firebase domain DNS records:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error"
     });

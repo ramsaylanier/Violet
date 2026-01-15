@@ -18,6 +18,9 @@
     },
     "singleProjectMode": true
   },
+  "emulatorExport": {
+    "path": ".firebase/emulator-export"
+  },
   "firestore": {
     "database": "(default)",
     "location": "us-east1",

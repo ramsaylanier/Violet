@@ -61,6 +61,13 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 
+# Encryption Key (for secure token storage)
+# Generate a secure key using: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+ENCRYPTION_KEY=your-base64-encoded-32-byte-key
+
+# Cloudflare API (optional, for Cloudflare integration)
+CLOUDFLARE_API_BASE_URL=https://api.cloudflare.com/client/v4
+
 # Server Port (optional, defaults to 3000)
 PORT=3000
 ```

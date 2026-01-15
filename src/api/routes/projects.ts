@@ -23,12 +23,35 @@ router.get("/", async (req, res) => {
       .orderBy("createdAt", "desc")
       .get();
 
-    const projects = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate() || new Date()
-    }));
+    const projects = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+        domains: data.domains
+          ? data.domains.map((domain: any) => ({
+              ...domain,
+              linkedAt:
+                domain.linkedAt?.toDate?.() ||
+                (domain.linkedAt instanceof Date
+                  ? domain.linkedAt
+                  : new Date(domain.linkedAt))
+            }))
+          : undefined,
+        hosting: data.hosting
+          ? data.hosting.map((hosting: any) => ({
+              ...hosting,
+              linkedAt:
+                hosting.linkedAt?.toDate?.() ||
+                (hosting.linkedAt instanceof Date
+                  ? hosting.linkedAt
+                  : new Date(hosting.linkedAt))
+            }))
+          : undefined
+      };
+    });
 
     res.json(projects);
   } catch (error) {
@@ -117,7 +140,27 @@ router.get("/:id", async (req, res) => {
       id: doc.id,
       ...data,
       createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date()
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+      domains: data.domains
+        ? data.domains.map((domain: any) => ({
+            ...domain,
+            linkedAt:
+              domain.linkedAt?.toDate?.() ||
+              (domain.linkedAt instanceof Date
+                ? domain.linkedAt
+                : new Date(domain.linkedAt))
+          }))
+        : undefined,
+      hosting: data.hosting
+        ? data.hosting.map((hosting: any) => ({
+            ...hosting,
+            linkedAt:
+              hosting.linkedAt?.toDate?.() ||
+              (hosting.linkedAt instanceof Date
+                ? hosting.linkedAt
+                : new Date(hosting.linkedAt))
+          }))
+        : undefined
     };
 
     res.json(project);
@@ -152,6 +195,20 @@ router.put("/:id", async (req, res) => {
         url: string;
       }>;
       firebaseProjectId?: string | null;
+      domains?: Array<{
+        zoneId: string;
+        zoneName: string;
+        provider: "cloudflare";
+        linkedAt: Date | string;
+      }>;
+      hosting?: Array<{
+        id: string;
+        provider: "cloudflare-pages" | "firebase-hosting";
+        name: string;
+        url?: string;
+        status?: string;
+        linkedAt: Date | string;
+      }>;
     };
 
     const doc = await adminDb.collection("projects").doc(id).get();
@@ -197,17 +254,68 @@ router.put("/:id", async (req, res) => {
         updateData.firebaseProjectId = updates.firebaseProjectId;
       }
     }
+    if (updates.domains !== undefined) {
+      // Convert Date objects to Firestore Timestamps
+      const { FieldValue } = await import("firebase-admin/firestore");
+      if (updates.domains.length === 0) {
+        updateData.domains = FieldValue.delete();
+      } else {
+        updateData.domains = updates.domains.map((domain) => ({
+          ...domain,
+          linkedAt:
+            domain.linkedAt instanceof Date
+              ? domain.linkedAt
+              : new Date(domain.linkedAt)
+        }));
+      }
+    }
+    if (updates.hosting !== undefined) {
+      // Convert Date objects to Firestore Timestamps
+      const { FieldValue } = await import("firebase-admin/firestore");
+      if (updates.hosting.length === 0) {
+        updateData.hosting = FieldValue.delete();
+      } else {
+        updateData.hosting = updates.hosting.map((hosting) => ({
+          ...hosting,
+          linkedAt:
+            hosting.linkedAt instanceof Date
+              ? hosting.linkedAt
+              : new Date(hosting.linkedAt)
+        }));
+      }
+    }
 
     await adminDb.collection("projects").doc(id).update(updateData);
 
     const updatedDoc = await adminDb.collection("projects").doc(id).get();
     const updatedData = updatedDoc.data()!;
 
+    // Convert Firestore Timestamps to Date objects for domains and hosting
     const project = {
       id: updatedDoc.id,
       ...updatedData,
       createdAt: updatedData.createdAt?.toDate() || new Date(),
-      updatedAt: updatedData.updatedAt?.toDate() || new Date()
+      updatedAt: updatedData.updatedAt?.toDate() || new Date(),
+      domains: updatedData.domains
+        ? updatedData.domains.map((domain: any) => ({
+            ...domain,
+            linkedAt:
+              domain.linkedAt?.toDate?.() ||
+              (domain.linkedAt instanceof Date
+                ? domain.linkedAt
+                : new Date(domain.linkedAt))
+          }))
+        : undefined,
+      hosting: updatedData.hosting
+        ? updatedData.hosting.map((hosting: any) => ({
+            ...hosting,
+            linkedAt:
+              hosting.linkedAt?.toDate?.() ||
+              (hosting.linkedAt instanceof Date
+                ? hosting.linkedAt
+                : new Date(hosting.linkedAt))
+          }))
+        : undefined
     };
 
     res.json(project);

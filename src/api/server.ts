@@ -12,6 +12,7 @@ import { projectRoutes } from "./routes/projects.js";
 import { githubRoutes } from "./routes/github.js";
 import { firebaseRoutes } from "./routes/firebase.js";
 import { agentRoutes } from "./routes/agent.js";
+import { cloudflareRoutes } from "./routes/cloudflare.js";
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 3001;
@@ -25,6 +26,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/github", githubRoutes);
 app.use("/api/firebase", firebaseRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/cloudflare", cloudflareRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -18,13 +18,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Github, Flame, ArrowLeft } from "lucide-react";
+import { Github, Flame, ArrowLeft, Globe, Rocket } from "lucide-react";
 import { ProjectOverview } from "@/components/project/ProjectOverview";
 import { ProjectSettings } from "@/components/project/ProjectSettings";
 import { ProjectRepositories } from "@/components/project/ProjectRepositories";
 import { ProjectIntegrations } from "@/components/project/ProjectIntegrations";
 import { ProjectIssues } from "@/components/project/ProjectIssues";
 import { ProjectPlanning } from "@/components/project/ProjectPlanning";
+import { ProjectDomains } from "@/components/project/domains/ProjectDomains";
+import { ProjectHosting } from "@/components/project/hosting/ProjectHosting";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectView,
@@ -49,6 +51,8 @@ function ProjectView() {
     "repositories",
     "issues",
     "planning",
+    "domains",
+    "hosting",
     "integrations",
     "settings"
   ];
@@ -64,7 +68,6 @@ function ProjectView() {
     const loadProject = async () => {
       try {
         const data = await getProject(projectId);
-        console.log("🔥 data", data);
         setProject(data);
       } catch (err: any) {
         console.error("Failed to load project:", err);
@@ -146,6 +149,18 @@ function ProjectView() {
               Firebase
             </Badge>
           )}
+          {project.domains && project.domains.length > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              <Globe className="w-3 h-3" />
+              Domains ({project.domains.length})
+            </Badge>
+          )}
+          {project.hosting && project.hosting.length > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              <Rocket className="w-3 h-3" />
+              Hosting ({project.hosting.length})
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -166,6 +181,8 @@ function ProjectView() {
           <TabsTrigger value="repositories">Repositories</TabsTrigger>
           <TabsTrigger value="issues">Issues</TabsTrigger>
           <TabsTrigger value="planning">Planning</TabsTrigger>
+          <TabsTrigger value="domains">Domains</TabsTrigger>
+          <TabsTrigger value="hosting">Hosting</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -190,6 +207,20 @@ function ProjectView() {
 
         <TabsContent value="planning" className="space-y-4">
           <ProjectPlanning
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        </TabsContent>
+
+        <TabsContent value="domains" className="space-y-4">
+          <ProjectDomains
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        </TabsContent>
+
+        <TabsContent value="hosting" className="space-y-4">
+          <ProjectHosting
             project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />

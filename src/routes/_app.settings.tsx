@@ -9,6 +9,10 @@ import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/api/auth";
 import { disconnectGitHub, getGitHubOAuthUrl } from "@/api/github";
 import { disconnectGoogle, initiateGoogleOAuth } from "@/api/firebase";
+import {
+  storeCloudflareToken,
+  disconnectCloudflare
+} from "@/api/cloudflare";
 import type { User } from "@/types";
 import {
   Card,
@@ -19,6 +23,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ExternalLink, Loader2, Cloud } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   component: Settings,
@@ -42,6 +58,10 @@ function Settings() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+  const [connectingCloudflare, setConnectingCloudflare] = useState(false);
+  const [disconnectingCloudflare, setDisconnectingCloudflare] = useState(false);
+  const [cloudflareDialogOpen, setCloudflareDialogOpen] = useState(false);
+  const [cloudflareToken, setCloudflareToken] = useState("");
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -200,12 +220,77 @@ function Settings() {
     }
   };
 
+  const handleConnectCloudflare = async () => {
+    if (!cloudflareToken.trim()) {
+      setMessage({
+        type: "error",
+        text: "Please enter a Cloudflare API token"
+      });
+      return;
+    }
+
+    setConnectingCloudflare(true);
+    try {
+      await storeCloudflareToken(cloudflareToken.trim());
+      setMessage({
+        type: "success",
+        text: "Cloudflare account connected successfully!"
+      });
+      setCloudflareDialogOpen(false);
+      setCloudflareToken("");
+      // Reload user to get updated status
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Failed to connect Cloudflare account"
+      });
+    } finally {
+      setConnectingCloudflare(false);
+    }
+  };
+
+  const handleDisconnectCloudflare = async () => {
+    if (
+      !confirm("Are you sure you want to disconnect your Cloudflare account?")
+    ) {
+      return;
+    }
+
+    setDisconnectingCloudflare(true);
+    try {
+      await disconnectCloudflare();
+      setMessage({
+        type: "success",
+        text: "Cloudflare account disconnected successfully."
+      });
+      // Reload user to get updated status
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Failed to disconnect Cloudflare account"
+      });
+    } finally {
+      setDisconnectingCloudflare(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return <Navigate to="/login" search={{ redirect: location.pathname }} />;
   }
 
   const isGitHubConnected = !!user?.githubToken;
   const isGoogleConnected = !!user?.googleToken;
+  const isCloudflareConnected = !!user?.cloudflareToken;
 
   return (
     <div className="space-y-6 px-4">
@@ -303,6 +388,139 @@ function Settings() {
                   >
                     {connectingGoogle ? "Connecting..." : "Connect Google"}
                   </Button>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cloud className="w-5 h-5" />
+              Cloudflare
+            </CardTitle>
+            <CardDescription>
+              Connect your Cloudflare account to manage domains and DNS
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Status:{" "}
+                      {isCloudflareConnected ? "Connected" : "Not connected"}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {isCloudflareConnected
+                        ? "Your Cloudflare account is connected. You can manage domains, DNS records, and SSL settings."
+                        : "Connect your Cloudflare account to enable domain management features."}
+                    </p>
+                  </div>
+                </div>
+                {isCloudflareConnected ? (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDisconnectCloudflare}
+                    disabled={disconnectingCloudflare}
+                  >
+                    {disconnectingCloudflare
+                      ? "Disconnecting..."
+                      : "Disconnect Cloudflare"}
+                  </Button>
+                ) : (
+                  <Dialog
+                    open={cloudflareDialogOpen}
+                    onOpenChange={setCloudflareDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button>Connect Cloudflare</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Connect Cloudflare</DialogTitle>
+                        <DialogDescription>
+                          Enter your Cloudflare Account API token. You can create
+                          one in the Cloudflare dashboard.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cloudflare-token">
+                            Cloudflare Account API Token
+                          </Label>
+                          <Input
+                            id="cloudflare-token"
+                            type="password"
+                            placeholder="Enter your Account API token"
+                            value={cloudflareToken}
+                            onChange={(e) => setCloudflareToken(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !connectingCloudflare) {
+                                handleConnectCloudflare();
+                              }
+                            }}
+                            disabled={connectingCloudflare}
+                          />
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              Create an{" "}
+                              <strong className="text-foreground">
+                                Account API Token
+                              </strong>{" "}
+                              (not a User API Token) in the{" "}
+                              <a
+                                href="https://dash.cloudflare.com/profile/api-tokens"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                              >
+                                Cloudflare dashboard
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              <strong>Recommended permissions:</strong> Zone Read,
+                              DNS Edit, Zone Settings Read
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Account API Tokens are recommended for integrations
+                              as they are more durable and provide better control.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCloudflareDialogOpen(false);
+                            setCloudflareToken("");
+                          }}
+                          disabled={connectingCloudflare}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleConnectCloudflare}
+                          disabled={connectingCloudflare || !cloudflareToken.trim()}
+                        >
+                          {connectingCloudflare ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Connecting...
+                            </>
+                          ) : (
+                            "Connect"
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </>
             )}
