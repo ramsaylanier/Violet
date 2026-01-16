@@ -7,6 +7,7 @@ import {
   SelectValue
 } from "@/client/components/ui/select";
 import type { Project } from "@/shared/types";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 interface IssueFiltersProps {
   statusFilter: "all" | "open" | "closed";
@@ -23,7 +24,7 @@ export function IssueFilters({
   onRepoFilterChange,
   project
 }: IssueFiltersProps) {
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
 
   return (
     <div className="flex gap-4">

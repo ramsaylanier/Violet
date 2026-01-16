@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from "./client.js";
-import type { Project, ProjectSettings } from "@/shared/types";
+import type { Project, ProjectSettings, Hosting } from "@/shared/types";
 
 export async function listProjects(): Promise<Project[]> {
   return apiGet<Project[]>("/projects");
@@ -23,9 +23,38 @@ export async function getProject(projectId: string): Promise<Project> {
   return apiGet<Project>(`/projects/${projectId}`);
 }
 
+/**
+ * Update project input - includes legacy fields for backward compatibility with server
+ */
+export type UpdateProjectInput = Partial<Project> & {
+  // Legacy fields still supported by server for backward compatibility
+  repositories?: Array<{
+    owner: string;
+    name: string;
+    fullName: string;
+    url: string;
+  }>;
+  domains?: Array<{
+    zoneId?: string;
+    zoneName: string;
+    provider: "cloudflare" | "firebase";
+    linkedAt: Date | string;
+    siteId?: string;
+    status?: string;
+  }>;
+  hosting?: Array<{
+    id: string;
+    provider: "cloudflare-pages" | "firebase-hosting";
+    name: string;
+    url?: string;
+    status?: string;
+    linkedAt: Date | string;
+  }>;
+};
+
 export async function updateProject(
   projectId: string,
-  updates: Partial<Project>
+  updates: UpdateProjectInput
 ): Promise<Project> {
   return apiPut<Project>(`/projects/${projectId}`, updates);
 }

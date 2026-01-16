@@ -1,5 +1,5 @@
 import type { Project } from "@/shared/types";
-import { GithubProjects } from "./GitHubProjects";
+import { GithubProjects } from "../GitHubProjects";
 
 interface ProjectPlanningProps {
   project: Project;

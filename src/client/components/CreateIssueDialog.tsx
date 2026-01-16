@@ -26,6 +26,7 @@ import {
 } from "@/client/api/github";
 import { useGetGithubProjects } from "@/client/hooks/useGetGithubProjects";
 import type { Project, GitHubIssue } from "@/shared/types";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 interface CreateIssueDialogProps {
   open: boolean;
@@ -41,8 +42,9 @@ export function CreateIssueDialog({
   onSuccess,
   error: externalError
 }: CreateIssueDialogProps) {
+  const projectRepos = getProjectRepositories(project);
   const [newIssueRepo, setNewIssueRepo] = useState<string>(
-    project.repositories?.[0]?.fullName || ""
+    projectRepos?.[0]?.fullName || ""
   );
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [newIssueBody, setNewIssueBody] = useState("");
@@ -51,7 +53,6 @@ export function CreateIssueDialog({
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const projectRepos = project.repositories || [];
   const { availableRepositoryProjects } = useGetGithubProjects(project);
 
   const displayError = error || externalError;
@@ -108,7 +109,7 @@ export function CreateIssueDialog({
 
       if (existingIssues) {
         // Find the repository info
-        const repoInfo = project.repositories?.find(
+        const repoInfo = projectRepos.find(
           (r) => r.fullName === newIssueRepo
         );
 

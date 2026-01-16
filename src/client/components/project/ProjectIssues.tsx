@@ -35,9 +35,9 @@ import {
   addGitHubIssueComment,
   listGitHubIssueComments
 } from "@/client/api/github";
-import { CreateIssueDialog } from "./CreateIssueDialog";
-import { IssueFilters } from "./IssueFilters";
-import { IssueList } from "./IssueList";
+import { CreateIssueDialog } from "../CreateIssueDialog";
+import { IssueFilters } from "../IssueFilters";
+import { IssueList } from "../IssueList";
 
 interface ProjectIssuesProps {
   project: Project;
@@ -68,7 +68,13 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
   );
   const [repoFilter, setRepoFilter] = useState<string>("all");
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = useMemo(() => {
+    const deployments = project.deployments || [];
+    return deployments
+      .map((deployment) => deployment.repository)
+      .filter((r): r is NonNullable<typeof r> => r !== undefined);
+  }, [project.deployments]);
+
   const isGitHubConnected = !!user?.githubToken;
 
   // Fetch issues using useQuery

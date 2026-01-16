@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectOverview } from "@/client/components/ProjectOverview";
+import { ProjectOverview } from "@/client/components/project/ProjectOverview";
 import { useProjectContext } from "@/client/contexts/ProjectContext";
 
 export const Route = createFileRoute("/_app/projects/$projectId/")({

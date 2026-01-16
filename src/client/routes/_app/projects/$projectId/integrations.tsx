@@ -1,10 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectIntegrations } from "@/client/components/ProjectIntegrations";
+import { ProjectIntegrations } from "@/client/components/project/ProjectIntegrations";
 import { useProjectContext } from "@/client/contexts/ProjectContext";
 
-export const Route = createFileRoute(
-  "/_app/projects/$projectId/integrations"
-)({
+export const Route = createFileRoute("/_app/projects/$projectId/integrations")({
   component: ProjectIntegrationsPage
 });
 

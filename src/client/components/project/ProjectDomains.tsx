@@ -71,8 +71,9 @@ import {
   listCloudflareDNSRecords
 } from "@/client/api/cloudflare";
 import { updateProject } from "@/client/api/projects";
+import { getProjectDomains } from "@/client/lib/utils";
 import { EmptyState } from "@/client/components/shared/EmptyState";
-import { DNSRecordDialog } from "./DNSRecordDialog";
+import { DNSRecordDialog } from "../DNSRecordDialog";
 import { deleteCloudflareDNSRecord } from "@/client/api/cloudflare";
 import {
   listFirebaseHostingSites,
@@ -122,7 +123,7 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
   const { user } = useCurrentUser();
 
   const deployments = project.deployments || [];
-  const projectDomains = project.domains || []; // Legacy support
+  const projectDomains = getProjectDomains(project); // Legacy support
   const isCloudflareConnected = !!user?.cloudflareToken;
   const isGoogleConnected = !!user?.googleToken;
   const [firebaseDialogOpen, setFirebaseDialogOpen] = useState(false);
@@ -236,7 +237,9 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
           throw new Error("Please select a deployment");
         }
 
-        const selectedDeployment = deployments.find((d) => d.id === deploymentId);
+        const selectedDeployment = deployments.find(
+          (d) => d.id === deploymentId
+        );
         if (!selectedDeployment) {
           throw new Error("Selected deployment not found");
         }
@@ -1511,7 +1514,7 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteDNSRecord}
-                                disabled={deleteDNSRecordMutation.isPending}
+              disabled={deleteDNSRecordMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteDNSRecordMutation.isPending && (

@@ -18,6 +18,7 @@ import {
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import { listGitHubIssuesAggregated } from "@/client/api/github";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 interface ProjectOverviewProps {
   project: Project;
@@ -26,7 +27,7 @@ interface ProjectOverviewProps {
 export function ProjectOverview({ project }: ProjectOverviewProps) {
   const { user } = useCurrentUser();
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
   const projectGitHubProjects = project.githubProjects || [];
   const isGitHubConnected = !!user?.githubToken;
 

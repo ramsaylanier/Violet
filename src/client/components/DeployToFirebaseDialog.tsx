@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/client/components/ui/badge";
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { getProjectRepositories, getProjectHosting } from "@/client/lib/utils";
 import {
   listFirebaseProjects,
   listFirebaseHostingSites,
@@ -53,7 +54,7 @@ export function DeployToFirebaseDialog({
   const { user } = useCurrentUser();
 
   const deployments = project.deployments || [];
-  const repositories = project.repositories || []; // Legacy support
+  const repositories = getProjectRepositories(project); // Legacy support
   const hasGoogleToken = !!user?.googleToken;
   const hasGithubToken = !!user?.githubToken;
 
@@ -109,7 +110,7 @@ export function DeployToFirebaseDialog({
         handleClose();
       } else {
         // Legacy: Add to project-level hosting
-        const existingHosting = project.hosting || [];
+        const existingHosting = getProjectHosting(project);
         const updatedHosting = [...existingHosting, hostingEntry];
 
         const updatedProject = await updateProject(project.id, {

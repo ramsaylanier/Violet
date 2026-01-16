@@ -45,9 +45,9 @@ import {
 import { updateProject } from "@/client/api/projects";
 import { getProjectHosting } from "@/client/lib/utils";
 import { EmptyState } from "@/client/components/shared/EmptyState";
-import { ProjectAddHostingDialog } from "./project/ProjectAddHostingDialog";
-import { DeployToFirebaseDialog } from "./DeployToFirebaseDialog";
-import { LinkCustomDomainDialog } from "./LinkCustomDomainDialog";
+import { ProjectAddHostingDialog } from "./ProjectAddHostingDialog";
+import { DeployToFirebaseDialog } from "../DeployToFirebaseDialog";
+import { LinkCustomDomainDialog } from "../LinkCustomDomainDialog";
 
 interface ProjectHostingProps {
   project: Project;

@@ -16,6 +16,7 @@ import { EmptyState } from "@/client/components/shared/EmptyState";
 import { GitHubNotConnectedState } from "@/client/components/shared/GitHubNotConnectedState";
 import { useGetGithubProjects } from "@/client/hooks/useGetGithubProjects";
 import type { Project } from "@/shared/types";
+import { getProjectRepositories } from "@/client/lib/utils";
 import { CreateProjectDialog } from "./CreateGithubProjectDialog";
 import { GithubProjectCard } from "./GithubProjectCard";
 
@@ -34,7 +35,7 @@ export function GithubProjects({ project, onUpdate }: GithubProjectsProps) {
     isGitHubConnected
   } = useGetGithubProjects(project);
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
 
   const handleCreateSuccess = (updatedProject: Project) => {
     onUpdate(updatedProject);

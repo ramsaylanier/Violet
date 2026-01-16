@@ -26,6 +26,7 @@ import {
   createGitHubProject
 } from "@/client/api/github";
 import type { Project } from "@/shared/types";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -62,7 +63,7 @@ export function CreateProjectDialog({
   >([]);
   const [loadingOwners, setLoadingOwners] = useState(false);
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
 
   // Load GitHub user and organizations when dialog opens
   useEffect(() => {

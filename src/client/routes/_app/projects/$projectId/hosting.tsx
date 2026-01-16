@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProjectHosting } from "@/client/components/ProjectHosting";
+import { ProjectHosting } from "@/client/components/project/ProjectHosting";
 import { useProjectContext } from "@/client/contexts/ProjectContext";
 
 export const Route = createFileRoute("/_app/projects/$projectId/hosting")({

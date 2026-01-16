@@ -77,10 +77,7 @@ export function CreateDeploymentDialog({
   const [error, setError] = useState<string | null>(null);
 
   // Fetch repositories using useQuery
-  const {
-    data: availableRepos = [],
-    isLoading: loadingRepos
-  } = useQuery({
+  const { data: availableRepos = [], isLoading: loadingRepos } = useQuery({
     queryKey: ["github-repositories"],
     queryFn: listGitHubRepositories,
     enabled: open && isGitHubConnected && repoMode === "add"
@@ -106,8 +103,13 @@ export function CreateDeploymentDialog({
 
   // Update project mutation
   const updateProjectMutation = useMutation({
-    mutationFn: ({ projectId, updates }: { projectId: string; updates: Partial<Project> }) =>
-      updateProject(projectId, updates),
+    mutationFn: ({
+      projectId,
+      updates
+    }: {
+      projectId: string;
+      updates: Partial<Project>;
+    }) => updateProject(projectId, updates),
     onSuccess: (updatedProject) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       onSuccess(updatedProject);
@@ -255,7 +257,8 @@ export function CreateDeploymentDialog({
     setError(null);
   };
 
-  const loading = createRepoMutation.isPending || updateProjectMutation.isPending;
+  const loading =
+    createRepoMutation.isPending || updateProjectMutation.isPending;
 
   return (
     <DialogContent className="max-w-2xl">
@@ -357,10 +360,7 @@ export function CreateDeploymentDialog({
                                   <Github className="w-4 h-4" />
                                   <span>{repo.full_name}</span>
                                   {repo.private && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="ml-2"
-                                    >
+                                    <Badge variant="secondary" className="ml-2">
                                       Private
                                     </Badge>
                                   )}

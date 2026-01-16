@@ -13,6 +13,7 @@ import { Label } from "@/client/components/ui/label";
 import { Badge } from "@/client/components/ui/badge";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import type { Project } from "@/shared/types";
+import { getProjectDomains } from "@/client/lib/utils";
 import {
   addFirebaseDomain,
   getFirebaseDomainDNSRecords
@@ -50,7 +51,7 @@ export function LinkCustomDomainDialog({
     recordsUpdated: number;
   } | null>(null);
 
-  const projectDomains = project.domains || [];
+  const projectDomains = getProjectDomains(project);
   // Only show Cloudflare domains that can be linked to Firebase
   const availableCloudflareDomains = projectDomains.filter(
     (d) => d.provider === "cloudflare"

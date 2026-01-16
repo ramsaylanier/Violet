@@ -12,6 +12,7 @@ import { Button } from "@/client/components/ui/button";
 import { listProjects } from "@/client/api/projects";
 import { useAuth } from "@/client/contexts/AuthContext";
 import { Plus, Github, Flame } from "lucide-react";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 export function ProjectList() {
   const { isAuthenticated } = useAuth();
@@ -76,9 +77,12 @@ export function ProjectList() {
               <CardTitle className="flex items-center justify-between">
                 <span>{project.name}</span>
                 <div className="flex gap-2">
-                  {project.repositories && project.repositories.length > 0 && (
-                    <Github className="w-4 h-4 text-muted-foreground" />
-                  )}
+                  {(() => {
+                    const repos = getProjectRepositories(project);
+                    return repos.length > 0 && (
+                      <Github className="w-4 h-4 text-muted-foreground" />
+                    );
+                  })()}
                   {project.firebaseProjectId && (
                     <Flame className="w-4 h-4 text-muted-foreground" />
                   )}
@@ -90,14 +94,17 @@ export function ProjectList() {
             </CardHeader>
             <CardContent>
               <div className="text-sm text-muted-foreground space-y-1">
-                {project.repositories && project.repositories.length > 0 && (
-                  <div>
-                    GitHub:{" "}
-                    {project.repositories.length === 1
-                      ? project.repositories[0].fullName
-                      : `${project.repositories.length} repositories`}
-                  </div>
-                )}
+                {(() => {
+                  const repos = getProjectRepositories(project);
+                  return repos.length > 0 && (
+                    <div>
+                      GitHub:{" "}
+                      {repos.length === 1
+                        ? repos[0].fullName
+                        : `${repos.length} repositories`}
+                    </div>
+                  );
+                })()}
                 {project.firebaseProjectId && (
                   <div>Firebase: {project.firebaseProjectId}</div>
                 )}

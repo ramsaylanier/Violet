@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import { listGitHubProjectsForRepository } from "@/client/api/github";
 import type { Project, GitHubProject } from "@/shared/types";
+import { getProjectRepositories } from "@/client/lib/utils";
 
 interface UseGetGithubProjectsResult {
   availableRepositoryProjects: GitHubProject[];
@@ -19,7 +20,7 @@ export function useGetGithubProjects(
   const { user, loadingUser } = useCurrentUser();
   const isGitHubConnected = !!user?.githubToken;
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
 
   // Fetch projects for all repositories using TanStack Query
   const {

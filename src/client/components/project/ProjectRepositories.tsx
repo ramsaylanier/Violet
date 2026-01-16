@@ -64,6 +64,7 @@ import {
 } from "@/client/components/ui/alert-dialog";
 import type { Project, GitHubRepository, GitHubIssue } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { getProjectRepositories } from "@/client/lib/utils";
 import {
   listGitHubRepositories,
   createGitHubRepository,
@@ -115,7 +116,7 @@ export function ProjectRepositories({
     Record<string, { issues: GitHubIssue[]; loading: boolean; open: boolean }>
   >({});
 
-  const projectRepos = project.repositories || [];
+  const projectRepos = getProjectRepositories(project);
   const isGitHubConnected = !!user?.githubToken;
 
   const loadRepositories = async () => {

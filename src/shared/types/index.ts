@@ -34,18 +34,14 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  type?: "monorepo" | "multi-service"; // NEW - optional for backward compatibility
+  type?: "monorepo" | "multi-service";
   createdAt: Date;
   updatedAt: Date;
-  userId: string; // Added for querying
-  deployments?: Deployment[]; // NEW - replaces repositories, domains, hosting
-  // Legacy fields - kept for backward compatibility during migration
-  repositories?: Array<{
-    owner: string;
-    name: string;
-    fullName: string;
-    url: string;
-  }>;
+  userId: string;
+  settings: ProjectSettings;
+  metadata?: Record<string, unknown>;
+  // Current fields
+  deployments?: Deployment[];
   githubProjects?: Array<{
     projectId: string;
     name: string;
@@ -53,18 +49,7 @@ export interface Project {
     ownerType: "user" | "org";
     url?: string;
   }>;
-  firebaseProjectId?: string;
-  domains?: Array<{
-    zoneId?: string;
-    zoneName: string;
-    provider: "cloudflare" | "firebase";
-    linkedAt: Date;
-    siteId?: string; // For Firebase domains
-    status?: string; // For Firebase domain status
-  }>;
-  hosting?: Hosting[];
-  settings: ProjectSettings;
-  metadata: Record<string, unknown>;
+  firebaseProjectId?: string | null;
 }
 
 export interface ProjectSettings {
