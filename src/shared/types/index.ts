@@ -460,3 +460,26 @@ export interface FirebaseHostingSite {
   defaultUrl: string;
   appId?: string;
 }
+
+export type DeploymentStep =
+  | "idle"
+  | "downloading"
+  | "building"
+  | "deploying"
+  | "success"
+  | "error";
+
+export interface DeploymentStatus {
+  id: string;
+  step: DeploymentStep;
+  progress: number; // 0-100
+  message?: string;
+  error?: string;
+  deployments?: Array<{
+    providerId: string;
+    provider: "firebase-hosting" | "cloudflare-pages";
+    status: "pending" | "in_progress" | "success" | "error";
+    url?: string;
+    error?: string;
+  }>;
+}

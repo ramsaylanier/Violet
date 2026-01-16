@@ -15,8 +15,12 @@ import {
   Github,
   Globe,
   Flame,
-  ExternalLink
+  ExternalLink,
+  Play
 } from "lucide-react";
+import { useState } from "react";
+import { Dialog } from "@/client/components/ui/dialog";
+import { DeployDialog } from "@/client/components/deployment/DeployDialog";
 
 export const Route = createFileRoute(
   "/_app/projects/$projectId/deployments/$deploymentId"
@@ -28,6 +32,7 @@ function DeploymentView() {
   const navigate = useNavigate();
   const { projectId, deploymentId } = Route.useParams();
   const { project, loading, error } = useProjectContext();
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
 
   if (loading) {
     return (
@@ -117,6 +122,12 @@ function DeploymentView() {
           </div>
         </div>
         <div className="flex gap-2">
+          {deployment.repository && (
+            <Button onClick={() => setDeployDialogOpen(true)}>
+              <Play className="w-4 h-4 mr-2" />
+              Deploy
+            </Button>
+          )}
           {deployment.repository && (
             <Badge variant="secondary" className="gap-1">
               <Github className="w-3 h-3" />
@@ -324,6 +335,22 @@ function DeploymentView() {
             </CardContent>
           </Card>
         )}
+
+      <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
+        {deployment && project && (
+          <DeployDialog
+            open={deployDialogOpen}
+            onOpenChange={setDeployDialogOpen}
+            projectId={projectId}
+            deployment={deployment}
+            project={project}
+            onProjectUpdate={() => {
+              // Refresh project context if available
+              // The ProjectContext should handle this automatically
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
