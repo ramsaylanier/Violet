@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Cloud,
   Plus,
@@ -32,7 +32,11 @@ import {
   AlertDialogTitle
 } from "@/client/components/ui/alert-dialog";
 import { Badge } from "@/client/components/ui/badge";
-import type { Project, CloudflarePagesDeployment } from "@/shared/types";
+import type {
+  Project,
+  CloudflarePagesDeployment,
+  Hosting
+} from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import {
   getCloudflareAccountId,
@@ -61,13 +65,12 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
     name: string;
     provider: string;
   } | null>(null);
-  const [deployments, setDeployments] = useState<
+  const [cloudflareDeployments, setCloudflareDeployments] = useState<
     Record<
       string,
       { deployments: CloudflarePagesDeployment[]; loading: boolean }
     >
   >({});
-  const [accountId, setAccountId] = useState<string | null>(null);
   const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
   const [selectedHostingForDomain, setSelectedHostingForDomain] = useState<{
     id: string;
@@ -76,28 +79,25 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
   } | null>(null);
   const { user } = useCurrentUser();
 
-  const projectHosting = project.hosting || [];
+  const deployments = project.deployments || [];
+  const projectHosting = project.hosting || []; // Legacy support
 
-  // Load account ID for deployments
-  useEffect(() => {
-    const loadAccountId = async () => {
-      if (user?.cloudflareToken && !accountId) {
-        try {
-          const { accountId: id } = await getCloudflareAccountId();
-          setAccountId(id);
-        } catch (err) {
-          console.error("Failed to load account ID:", err);
-        }
-      }
-    };
-    loadAccountId();
-  }, [user?.cloudflareToken, accountId]);
+  // Load account ID for deployments using useQuery
+  const { data: accountId } = useQuery({
+    queryKey: ["cloudflare-account-id"],
+    queryFn: async () => {
+      const { accountId: id } = await getCloudflareAccountId();
+      return id;
+    },
+    enabled: !!user?.cloudflareToken,
+    retry: 1
+  });
 
   const loadDeployments = async (hostingId: string, projectName: string) => {
-    if (deployments[hostingId]?.loading || !accountId) return;
+    if (cloudflareDeployments[hostingId]?.loading || !accountId) return;
 
     try {
-      setDeployments((prev) => ({
+      setCloudflareDeployments((prev) => ({
         ...prev,
         [hostingId]: {
           deployments: prev[hostingId]?.deployments || [],
@@ -108,7 +108,7 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
       const deploymentList = await listCloudflarePagesDeployments(projectName, {
         accountId
       });
-      setDeployments((prev) => ({
+      setCloudflareDeployments((prev) => ({
         ...prev,
         [hostingId]: {
           deployments: deploymentList,
@@ -117,7 +117,7 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
       }));
     } catch (err: any) {
       console.error(`Failed to load deployments for ${projectName}:`, err);
-      setDeployments((prev) => ({
+      setCloudflareDeployments((prev) => ({
         ...prev,
         [hostingId]: {
           deployments: prev[hostingId]?.deployments || [],
@@ -210,16 +210,23 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {project.repositories && project.repositories.length > 0 && (
+          {deployments.some((d) => d.repository) && (
             <Button variant="outline" onClick={() => setDeployDialogOpen(true)}>
               <Flame className="w-4 h-4 mr-2" />
               Deploy to Firebase
             </Button>
           )}
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Hosting
-          </Button>
+          {deployments.length > 0 ? (
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Hosting to Deployment
+            </Button>
+          ) : (
+            <Button onClick={() => setDialogOpen(true)} disabled>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Hosting (Create deployment first)
+            </Button>
+          )}
         </div>
         <ProjectAddHostingDialog
           open={dialogOpen}
@@ -255,11 +262,197 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
         )}
       </div>
 
-      {projectHosting.length > 0 ? (
+      {/* Show hosting from deployments */}
+      {deployments.some((d) => d.hosting && d.hosting.length > 0) ? (
+        <div className="space-y-6">
+          {deployments
+            .filter((d) => d.hosting && d.hosting.length > 0)
+            .map((deployment: (typeof deployments)[0]) => (
+              <div key={deployment.id} className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground">
+                  {deployment.name}
+                </h4>
+                <div className="space-y-4">
+                  {deployment.hosting!.map((hosting: Hosting) => {
+                    const ProviderIcon = getProviderIcon(hosting.provider);
+                    const hostingDeployments =
+                      cloudflareDeployments[hosting.id];
+
+                    return (
+                      <Card key={hosting.id}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="flex items-center gap-2">
+                                <ProviderIcon className="w-5 h-5" />
+                                {hosting.name}
+                              </CardTitle>
+                              {getStatusBadge(hosting.status)}
+                              <Badge variant="outline" className="capitalize">
+                                {hosting.provider.replace("-", " ")}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {hosting.url && (
+                                <a
+                                  href={hosting.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                >
+                                  <Globe className="w-4 h-4" />
+                                  Visit
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                              {hosting.provider === "cloudflare-pages" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!hostingDeployments && accountId) {
+                                      loadDeployments(hosting.id, hosting.name);
+                                    }
+                                  }}
+                                >
+                                  <Settings className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {hosting.provider === "firebase-hosting" && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedHostingForDomain({
+                                        id: hosting.id,
+                                        name: hosting.name,
+                                        siteId: hosting.name
+                                      });
+                                      setAddDomainDialogOpen(true);
+                                    }}
+                                  >
+                                    <Globe className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDeployDialogOpen(true)}
+                                  >
+                                    <Flame className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Remove hosting from deployment
+                                  const updatedDeployments = deployments.map(
+                                    (d) =>
+                                      d.id === deployment.id
+                                        ? {
+                                            ...d,
+                                            hosting:
+                                              d.hosting?.filter(
+                                                (h) => h.id !== hosting.id
+                                              ) || [],
+                                            updatedAt: new Date()
+                                          }
+                                        : d
+                                  );
+                                  updateProject(project.id, {
+                                    deployments: updatedDeployments
+                                  }).then((updated) => {
+                                    onUpdate(updated);
+                                    queryClient.invalidateQueries({
+                                      queryKey: ["projects"]
+                                    });
+                                  });
+                                }}
+                                disabled={loading}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {(hosting.provider === "cloudflare-pages" ||
+                            hosting.provider === "firebase-hosting") &&
+                            hostingDeployments && (
+                              <div className="space-y-2">
+                                <div className="text-sm font-medium">
+                                  Recent Deployments
+                                </div>
+                                {hostingDeployments.loading ? (
+                                  <div className="flex items-center gap-2 py-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span className="text-sm text-muted-foreground">
+                                      Loading deployments...
+                                    </span>
+                                  </div>
+                                ) : hostingDeployments.deployments.length ===
+                                  0 ? (
+                                  <div className="text-sm text-muted-foreground py-2">
+                                    No deployments found
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {hostingDeployments.deployments
+                                      .slice(0, 5)
+                                      .map(
+                                        (
+                                          deployment: CloudflarePagesDeployment
+                                        ) => (
+                                          <div
+                                            key={deployment.id}
+                                            className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm"
+                                          >
+                                            {getStatusBadge(
+                                              deployment.latest_stage?.status
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                              <div className="truncate">
+                                                {deployment.deployment_trigger
+                                                  ?.metadata?.commit_message ||
+                                                  deployment.environment}
+                                              </div>
+                                              <div className="text-xs text-muted-foreground">
+                                                {new Date(
+                                                  deployment.created_on
+                                                ).toLocaleString()}
+                                              </div>
+                                            </div>
+                                            <a
+                                              href={deployment.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-primary hover:underline"
+                                            >
+                                              <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                          </div>
+                                        )
+                                      )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+        </div>
+      ) : projectHosting.length > 0 ? (
+        // Legacy: Show project-level hosting if no deployments
         <div className="space-y-4">
           {projectHosting.map((hosting) => {
             const ProviderIcon = getProviderIcon(hosting.provider);
-            const hostingDeployments = deployments[hosting.id];
+            const hostingDeployments = cloudflareDeployments[hosting.id];
 
             return (
               <Card key={hosting.id}>
@@ -361,7 +554,7 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
                           <div className="space-y-2">
                             {hostingDeployments.deployments
                               .slice(0, 5)
-                              .map((deployment) => (
+                              .map((deployment: CloudflarePagesDeployment) => (
                                 <div
                                   key={deployment.id}
                                   className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm"
@@ -404,7 +597,11 @@ export function ProjectHosting({ project, onUpdate }: ProjectHostingProps) {
         <EmptyState
           icon={<Rocket className="w-12 h-12 mx-auto text-muted-foreground" />}
           title="No hosting configured"
-          description="Add a hosting provider to deploy your project"
+          description={
+            deployments.length === 0
+              ? "Create a deployment first, then add hosting to it"
+              : "Add a hosting provider to deploy your project"
+          }
         />
       )}
 

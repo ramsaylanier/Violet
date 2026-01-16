@@ -48,6 +48,40 @@ export const projectTools = [
           properties: {
             name: { type: "string" },
             description: { type: "string" },
+            type: {
+              type: "string",
+              enum: ["monorepo", "multi-service"],
+              description:
+                "Project type: monorepo (1 repo → many deployments) or multi-service (1 repo → 1 deployment)"
+            },
+            deployments: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  repository: {
+                    type: "object",
+                    properties: {
+                      owner: { type: "string" },
+                      name: { type: "string" },
+                      fullName: { type: "string" },
+                      url: { type: "string" }
+                    }
+                  },
+                  domains: {
+                    type: "array",
+                    items: { type: "object" }
+                  },
+                  hosting: {
+                    type: "array",
+                    items: { type: "object" }
+                  }
+                }
+              }
+            },
             repositories: {
               type: "array",
               items: {

@@ -56,6 +56,7 @@ export function ProjectAddHostingDialog({
 }: ProjectAddHostingDialogProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [selectedDeploymentId, setSelectedDeploymentId] = useState<string>("");
   const [selectedProvider, setSelectedProvider] = useState<
     "cloudflare-pages" | "firebase-hosting" | ""
   >("");
@@ -64,7 +65,7 @@ export function ProjectAddHostingDialog({
   const [newPagesProjectBranch, setNewPagesProjectBranch] = useState("");
   const { user } = useCurrentUser();
 
-  const projectHosting = project.hosting || [];
+  const deployments = project.deployments || [];
   const isCloudflareConnected = !!user?.cloudflareToken;
   const hasFirebaseProject = !!project.firebaseProjectId;
 
@@ -107,17 +108,8 @@ export function ProjectAddHostingDialog({
 
   // Mutation for updating project with hosting
   const updateProjectMutation = useMutation({
-    mutationFn: async (
-      hosting: Array<{
-        id: string;
-        provider: "cloudflare-pages" | "firebase-hosting";
-        name: string;
-        url?: string;
-        status?: string;
-        linkedAt: Date;
-      }>
-    ) => {
-      return updateProject(project.id, { hosting });
+    mutationFn: async (updatedDeployments: typeof deployments) => {
+      return updateProject(project.id, { deployments: updatedDeployments });
     },
     onSuccess: (updatedProject) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -132,8 +124,20 @@ export function ProjectAddHostingDialog({
 
   const handleAddHosting = async () => {
     if (!selectedProvider) return;
+    if (!selectedDeploymentId) {
+      setError("Please select a deployment");
+      return;
+    }
 
     setError(null);
+
+    const selectedDeployment = deployments.find(
+      (d) => d.id === selectedDeploymentId
+    );
+    if (!selectedDeployment) {
+      setError("Selected deployment not found");
+      return;
+    }
 
     if (selectedProvider === "cloudflare-pages") {
       if (selectedPagesProject) {
@@ -146,14 +150,14 @@ export function ProjectAddHostingDialog({
           return;
         }
 
-        // Check if already linked
+        // Check if already linked to this deployment
         if (
-          projectHosting.some(
+          selectedDeployment.hosting?.some(
             (h) =>
               h.provider === "cloudflare-pages" && h.name === pagesProject.name
           )
         ) {
-          setError("This hosting project is already linked");
+          setError("This hosting project is already linked to this deployment");
           return;
         }
 
@@ -168,8 +172,16 @@ export function ProjectAddHostingDialog({
           linkedAt: new Date()
         };
 
-        const updatedHosting = [...projectHosting, newHosting];
-        updateProjectMutation.mutate(updatedHosting);
+        const updatedDeployments = deployments.map((d) =>
+          d.id === selectedDeploymentId
+            ? {
+                ...d,
+                hosting: [...(d.hosting || []), newHosting],
+                updatedAt: new Date()
+              }
+            : d
+        );
+        updateProjectMutation.mutate(updatedDeployments);
       } else if (newPagesProjectName.trim()) {
         // Create new project
         createPagesProjectMutation.mutate(
@@ -191,8 +203,16 @@ export function ProjectAddHostingDialog({
                 linkedAt: new Date()
               };
 
-              const updatedHosting = [...projectHosting, newHosting];
-              updateProjectMutation.mutate(updatedHosting);
+              const updatedDeployments = deployments.map((d) =>
+                d.id === selectedDeploymentId
+                  ? {
+                      ...d,
+                      hosting: [...(d.hosting || []), newHosting],
+                      updatedAt: new Date()
+                    }
+                  : d
+              );
+              updateProjectMutation.mutate(updatedDeployments);
             },
             onError: (err: any) => {
               setError(err?.message || "Failed to create Pages project");
@@ -225,23 +245,32 @@ export function ProjectAddHostingDialog({
         linkedAt: new Date()
       };
 
-      // Check if already linked
+      // Check if already linked to this deployment
       if (
-        projectHosting.some(
+        selectedDeployment.hosting?.some(
           (h) => h.provider === "firebase-hosting" && h.id === newHosting.id
         )
       ) {
-        setError("Firebase Hosting is already linked");
+        setError("Firebase Hosting is already linked to this deployment");
         return;
       }
 
-      const updatedHosting = [...projectHosting, newHosting];
-      updateProjectMutation.mutate(updatedHosting);
+      const updatedDeployments = deployments.map((d) =>
+        d.id === selectedDeploymentId
+          ? {
+              ...d,
+              hosting: [...(d.hosting || []), newHosting],
+              updatedAt: new Date()
+            }
+          : d
+      );
+      updateProjectMutation.mutate(updatedDeployments);
     }
   };
 
   const handleClose = () => {
     setError(null);
+    setSelectedDeploymentId("");
     setSelectedProvider("");
     setSelectedPagesProject("");
     setNewPagesProjectName("");
@@ -266,6 +295,38 @@ export function ProjectAddHostingDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {deployments.length > 0 ? (
+            <div>
+              <Label htmlFor="deployment-select">Deployment *</Label>
+              <Select
+                value={selectedDeploymentId}
+                onValueChange={(value) => {
+                  setSelectedDeploymentId(value);
+                  setError(null);
+                }}
+              >
+                <SelectTrigger id="deployment-select" className="mt-2">
+                  <SelectValue placeholder="Select a deployment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deployments.map((deployment) => (
+                    <SelectItem key={deployment.id} value={deployment.id}>
+                      {deployment.name}
+                      {deployment.repository && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({deployment.repository.fullName})
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground p-4 bg-muted rounded-md">
+              No deployments found. Create a deployment first.
+            </div>
+          )}
           <div>
             <Label htmlFor="provider-select">Hosting Provider</Label>
             <Select
@@ -430,6 +491,10 @@ export function ProjectAddHostingDialog({
           <Button
             onClick={handleAddHosting}
             disabled={
+              isLoading ||
+              !selectedProvider ||
+              !selectedDeploymentId ||
+              deployments.length === 0 ||
               isLoading ||
               !selectedProvider ||
               (selectedProvider === "cloudflare-pages" &&

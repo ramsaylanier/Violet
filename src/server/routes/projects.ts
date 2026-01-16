@@ -30,6 +30,41 @@ router.get("/", async (req, res) => {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
+        deployments: data.deployments
+          ? data.deployments.map((deployment: any) => ({
+              ...deployment,
+              createdAt:
+                deployment.createdAt?.toDate?.() ||
+                (deployment.createdAt instanceof Date
+                  ? deployment.createdAt
+                  : new Date(deployment.createdAt)),
+              updatedAt:
+                deployment.updatedAt?.toDate?.() ||
+                (deployment.updatedAt instanceof Date
+                  ? deployment.updatedAt
+                  : new Date(deployment.updatedAt)),
+              domains: deployment.domains
+                ? deployment.domains.map((domain: any) => ({
+                    ...domain,
+                    linkedAt:
+                      domain.linkedAt?.toDate?.() ||
+                      (domain.linkedAt instanceof Date
+                        ? domain.linkedAt
+                        : new Date(domain.linkedAt))
+                  }))
+                : [],
+              hosting: deployment.hosting
+                ? deployment.hosting.map((hosting: any) => ({
+                    ...hosting,
+                    linkedAt:
+                      hosting.linkedAt?.toDate?.() ||
+                      (hosting.linkedAt instanceof Date
+                        ? hosting.linkedAt
+                        : new Date(hosting.linkedAt))
+                  }))
+                : []
+            }))
+          : undefined,
         domains: data.domains
           ? data.domains.map((domain: any) => ({
               ...domain,
@@ -72,9 +107,10 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const userId = await getRequireAuth(req);
-    const { name, description, settings, metadata } = req.body as {
+    const { name, description, type, settings, metadata } = req.body as {
       name: string;
       description?: string;
+      type?: "monorepo" | "multi-service";
       settings?: ProjectSettings;
       metadata?: { [key: string]: string };
     };
@@ -90,6 +126,9 @@ router.post("/", async (req, res) => {
     // Only include optional fields if they are defined (not undefined)
     if (description !== undefined) {
       projectData.description = description;
+    }
+    if (type !== undefined) {
+      projectData.type = type;
     }
     if (metadata !== undefined) {
       projectData.metadata = metadata;
@@ -141,6 +180,41 @@ router.get("/:id", async (req, res) => {
       ...data,
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
+      deployments: data.deployments
+        ? data.deployments.map((deployment: any) => ({
+            ...deployment,
+            createdAt:
+              deployment.createdAt?.toDate?.() ||
+              (deployment.createdAt instanceof Date
+                ? deployment.createdAt
+                : new Date(deployment.createdAt)),
+            updatedAt:
+              deployment.updatedAt?.toDate?.() ||
+              (deployment.updatedAt instanceof Date
+                ? deployment.updatedAt
+                : new Date(deployment.updatedAt)),
+            domains: deployment.domains
+              ? deployment.domains.map((domain: any) => ({
+                  ...domain,
+                  linkedAt:
+                    domain.linkedAt?.toDate?.() ||
+                    (domain.linkedAt instanceof Date
+                      ? domain.linkedAt
+                      : new Date(domain.linkedAt))
+                }))
+              : [],
+            hosting: deployment.hosting
+              ? deployment.hosting.map((hosting: any) => ({
+                  ...hosting,
+                  linkedAt:
+                    hosting.linkedAt?.toDate?.() ||
+                    (hosting.linkedAt instanceof Date
+                      ? hosting.linkedAt
+                      : new Date(hosting.linkedAt))
+                }))
+              : []
+          }))
+        : undefined,
       domains: data.domains
         ? data.domains.map((domain: any) => ({
             ...domain,
@@ -186,8 +260,38 @@ router.put("/:id", async (req, res) => {
     const updates = req.body as {
       name?: string;
       description?: string;
+      type?: "monorepo" | "multi-service";
       settings?: ProjectSettings;
       metadata?: { [key: string]: string };
+      deployments?: Array<{
+        id: string;
+        name: string;
+        description?: string;
+        repository?: {
+          owner: string;
+          name: string;
+          fullName: string;
+          url: string;
+        };
+        domains?: Array<{
+          zoneId?: string;
+          zoneName: string;
+          provider: "cloudflare" | "firebase";
+          linkedAt: Date | string;
+          siteId?: string;
+          status?: string;
+        }>;
+        hosting?: Array<{
+          id: string;
+          provider: "cloudflare-pages" | "firebase-hosting";
+          name: string;
+          url?: string;
+          status?: string;
+          linkedAt: Date | string;
+        }>;
+        createdAt: Date | string;
+        updatedAt: Date | string;
+      }>;
       repositories?: Array<{
         owner: string;
         name: string;
@@ -231,8 +335,46 @@ router.put("/:id", async (req, res) => {
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.description !== undefined)
       updateData.description = updates.description;
+    if (updates.type !== undefined) updateData.type = updates.type;
     if (updates.settings !== undefined) updateData.settings = updates.settings;
     if (updates.metadata !== undefined) updateData.metadata = updates.metadata;
+    if (updates.deployments !== undefined) {
+      // Convert Date objects to Firestore Timestamps for deployments
+      const { FieldValue } = await import("firebase-admin/firestore");
+      if (updates.deployments.length === 0) {
+        updateData.deployments = FieldValue.delete();
+      } else {
+        updateData.deployments = updates.deployments.map((deployment: any) => ({
+          ...deployment,
+          createdAt:
+            deployment.createdAt instanceof Date
+              ? deployment.createdAt
+              : new Date(deployment.createdAt),
+          updatedAt:
+            deployment.updatedAt instanceof Date
+              ? deployment.updatedAt
+              : new Date(deployment.updatedAt),
+          domains: deployment.domains
+            ? deployment.domains.map((domain: any) => ({
+                ...domain,
+                linkedAt:
+                  domain.linkedAt instanceof Date
+                    ? domain.linkedAt
+                    : new Date(domain.linkedAt)
+              }))
+            : [],
+          hosting: deployment.hosting
+            ? deployment.hosting.map((hosting: any) => ({
+                ...hosting,
+                linkedAt:
+                  hosting.linkedAt instanceof Date
+                    ? hosting.linkedAt
+                    : new Date(hosting.linkedAt)
+              }))
+            : []
+        }));
+      }
+    }
     if (updates.repositories !== undefined) {
       // Use FieldValue.delete() if array is empty, otherwise set the array
       if (updates.repositories.length === 0) {
@@ -290,12 +432,47 @@ router.put("/:id", async (req, res) => {
     const updatedDoc = await adminDb.collection("projects").doc(id).get();
     const updatedData = updatedDoc.data()!;
 
-    // Convert Firestore Timestamps to Date objects for domains and hosting
+    // Convert Firestore Timestamps to Date objects for deployments, domains and hosting
     const project = {
       id: updatedDoc.id,
       ...updatedData,
       createdAt: updatedData.createdAt?.toDate() || new Date(),
       updatedAt: updatedData.updatedAt?.toDate() || new Date(),
+      deployments: updatedData.deployments
+        ? updatedData.deployments.map((deployment: any) => ({
+            ...deployment,
+            createdAt:
+              deployment.createdAt?.toDate?.() ||
+              (deployment.createdAt instanceof Date
+                ? deployment.createdAt
+                : new Date(deployment.createdAt)),
+            updatedAt:
+              deployment.updatedAt?.toDate?.() ||
+              (deployment.updatedAt instanceof Date
+                ? deployment.updatedAt
+                : new Date(deployment.updatedAt)),
+            domains: deployment.domains
+              ? deployment.domains.map((domain: any) => ({
+                  ...domain,
+                  linkedAt:
+                    domain.linkedAt?.toDate?.() ||
+                    (domain.linkedAt instanceof Date
+                      ? domain.linkedAt
+                      : new Date(domain.linkedAt))
+                }))
+              : [],
+            hosting: deployment.hosting
+              ? deployment.hosting.map((hosting: any) => ({
+                  ...hosting,
+                  linkedAt:
+                    hosting.linkedAt?.toDate?.() ||
+                    (hosting.linkedAt instanceof Date
+                      ? hosting.linkedAt
+                      : new Date(hosting.linkedAt))
+                }))
+              : []
+          }))
+        : undefined,
       domains: updatedData.domains
         ? updatedData.domains.map((domain: any) => ({
             ...domain,

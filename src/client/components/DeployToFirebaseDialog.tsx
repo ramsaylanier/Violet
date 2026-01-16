@@ -44,6 +44,7 @@ export function DeployToFirebaseDialog({
 }: DeployToFirebaseDialogProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [selectedDeploymentId, setSelectedDeploymentId] = useState<string>("");
   const [selectedRepo, setSelectedRepo] = useState<string>("");
   const [selectedBranch, setSelectedBranch] = useState<string>("main");
   const [selectedFirebaseProject, setSelectedFirebaseProject] =
@@ -51,9 +52,13 @@ export function DeployToFirebaseDialog({
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const { user } = useCurrentUser();
 
-  const repositories = project.repositories || [];
+  const deployments = project.deployments || [];
+  const repositories = project.repositories || []; // Legacy support
   const hasGoogleToken = !!user?.googleToken;
   const hasGithubToken = !!user?.githubToken;
+
+  // Get deployments with repositories
+  const deploymentsWithRepos = deployments.filter((d) => d.repository);
 
   // Query Firebase projects
   const { data: firebaseProjects = [], isLoading: loadingProjects } = useQuery({
@@ -73,7 +78,7 @@ export function DeployToFirebaseDialog({
   const deployMutation = useMutation({
     mutationFn: deployToFirebaseHosting,
     onSuccess: async (deployment) => {
-      // Update project with hosting entry
+      // Update deployment with hosting entry
       const hostingEntry = {
         id: `fb-deploy-${deployment.id}`,
         provider: "firebase-hosting" as const,
@@ -83,16 +88,38 @@ export function DeployToFirebaseDialog({
         linkedAt: new Date()
       };
 
-      const existingHosting = project.hosting || [];
-      const updatedHosting = [...existingHosting, hostingEntry];
+      if (deployments.length > 0 && selectedDeploymentId) {
+        // Add hosting to selected deployment
+        const updatedDeployments = deployments.map((d) =>
+          d.id === selectedDeploymentId
+            ? {
+                ...d,
+                hosting: [...(d.hosting || []), hostingEntry],
+                updatedAt: new Date()
+              }
+            : d
+        );
 
-      const updatedProject = await updateProject(project.id, {
-        hosting: updatedHosting
-      });
+        const updatedProject = await updateProject(project.id, {
+          deployments: updatedDeployments
+        });
 
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      onSuccess(updatedProject);
-      handleClose();
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        onSuccess(updatedProject);
+        handleClose();
+      } else {
+        // Legacy: Add to project-level hosting
+        const existingHosting = project.hosting || [];
+        const updatedHosting = [...existingHosting, hostingEntry];
+
+        const updatedProject = await updateProject(project.id, {
+          hosting: updatedHosting
+        });
+
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+        onSuccess(updatedProject);
+        handleClose();
+      }
     },
     onError: (err: any) => {
       console.error("Failed to deploy:", err);
@@ -121,21 +148,43 @@ export function DeployToFirebaseDialog({
   }, [project.firebaseProjectId, selectedFirebaseProject]);
 
   const handleDeploy = async () => {
-    if (!selectedRepo || !selectedFirebaseProject) {
-      setError("Please select a repository and Firebase project");
+    if (!selectedFirebaseProject) {
+      setError("Please select a Firebase project");
+      return;
+    }
+
+    if (deployments.length > 0 && !selectedDeploymentId) {
+      setError("Please select a deployment");
       return;
     }
 
     setError(null);
 
-    const repo = repositories.find((r) => {
-      const fullName = `${r.owner}/${r.name}`;
-      return fullName === selectedRepo;
-    });
+    let repo;
+    if (deployments.length > 0 && selectedDeploymentId) {
+      const selectedDeployment = deployments.find(
+        (d) => d.id === selectedDeploymentId
+      );
+      if (!selectedDeployment || !selectedDeployment.repository) {
+        setError("Selected deployment does not have a repository");
+        return;
+      }
+      repo = selectedDeployment.repository;
+    } else {
+      // Legacy: Find repo from repositories array
+      if (!selectedRepo) {
+        setError("Please select a repository");
+        return;
+      }
+      repo = repositories.find((r) => {
+        const fullName = `${r.owner}/${r.name}`;
+        return fullName === selectedRepo;
+      });
 
-    if (!repo) {
-      setError("Repository not found");
-      return;
+      if (!repo) {
+        setError("Repository not found");
+        return;
+      }
     }
 
     // Determine provider from repository URL or assume GitHub
@@ -158,16 +207,22 @@ export function DeployToFirebaseDialog({
 
   const handleClose = () => {
     setError(null);
+    setSelectedDeploymentId("");
     setSelectedRepo("");
     setSelectedBranch("main");
     setSelectedSiteId("");
     onOpenChange(false);
   };
 
-  const selectedRepoObj = repositories.find((r) => {
-    const fullName = `${r.owner}/${r.name}`;
-    return fullName === selectedRepo;
-  });
+  const selectedDeployment = deployments.find(
+    (d) => d.id === selectedDeploymentId
+  );
+  const selectedRepoObj =
+    selectedDeployment?.repository ||
+    repositories.find((r) => {
+      const fullName = `${r.owner}/${r.name}`;
+      return fullName === selectedRepo;
+    });
 
   const repoProvider = selectedRepoObj?.url.includes("gitlab.com")
     ? "gitlab"
@@ -199,62 +254,103 @@ export function DeployToFirebaseDialog({
                 Connect Google in settings
               </a>
             </div>
-          ) : repositories.length === 0 ? (
+          ) : deploymentsWithRepos.length === 0 && repositories.length === 0 ? (
             <div className="text-sm text-muted-foreground p-4 bg-muted rounded-md">
-              <p>No repositories linked to this project.</p>
+              <p>No deployments with repositories found.</p>
               <p className="mt-2">
-                Link a repository in the Repositories tab first.
+                Create a deployment with a repository first.
               </p>
             </div>
           ) : (
             <>
-              <div>
-                <Label htmlFor="repo-select">Repository</Label>
-                <Select
-                  value={selectedRepo}
-                  onValueChange={(value) => {
-                    setSelectedRepo(value);
-                    setError(null);
-                  }}
-                >
-                  <SelectTrigger id="repo-select" className="mt-2">
-                    <SelectValue placeholder="Select a repository" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {repositories.map((repo) => {
-                      const fullName = `${repo.owner}/${repo.name}`;
-                      const isGitLab = repo.url.includes("gitlab.com");
-                      return (
-                        <SelectItem key={fullName} value={fullName}>
-                          <div className="flex items-center gap-2">
-                            {isGitLab ? (
-                              <GitBranch className="w-4 h-4" />
-                            ) : (
-                              <Github className="w-4 h-4" />
-                            )}
-                            <span>{fullName}</span>
-                            <Badge variant="outline" className="ml-2">
-                              {isGitLab ? "GitLab" : "GitHub"}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {selectedRepoObj && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {repoProvider === "github" ? "Native" : "API"} deployment
-                    </Badge>
-                    {repoProvider === "gitlab" && !user?.gitlabToken && (
-                      <span className="text-xs text-muted-foreground">
-                        (GitLab token required)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+              {deploymentsWithRepos.length > 0 ? (
+                <div>
+                  <Label htmlFor="deployment-select">Deployment *</Label>
+                  <Select
+                    value={selectedDeploymentId}
+                    onValueChange={(value) => {
+                      setSelectedDeploymentId(value);
+                      setError(null);
+                    }}
+                  >
+                    <SelectTrigger id="deployment-select" className="mt-2">
+                      <SelectValue placeholder="Select a deployment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deploymentsWithRepos.map((deployment) => {
+                        const repo = deployment.repository!;
+                        const isGitLab = repo.url.includes("gitlab.com");
+                        return (
+                          <SelectItem key={deployment.id} value={deployment.id}>
+                            <div className="flex items-center gap-2">
+                              {isGitLab ? (
+                                <GitBranch className="w-4 h-4" />
+                              ) : (
+                                <Github className="w-4 h-4" />
+                              )}
+                              <span>{deployment.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({repo.fullName})
+                              </span>
+                              <Badge variant="outline" className="ml-2">
+                                {isGitLab ? "GitLab" : "GitHub"}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="repo-select">Repository</Label>
+                  <Select
+                    value={selectedRepo}
+                    onValueChange={(value) => {
+                      setSelectedRepo(value);
+                      setError(null);
+                    }}
+                  >
+                    <SelectTrigger id="repo-select" className="mt-2">
+                      <SelectValue placeholder="Select a repository" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {repositories.map((repo) => {
+                        const fullName = `${repo.owner}/${repo.name}`;
+                        const isGitLab = repo.url.includes("gitlab.com");
+                        return (
+                          <SelectItem key={fullName} value={fullName}>
+                            <div className="flex items-center gap-2">
+                              {isGitLab ? (
+                                <GitBranch className="w-4 h-4" />
+                              ) : (
+                                <Github className="w-4 h-4" />
+                              )}
+                              <span>{fullName}</span>
+                              <Badge variant="outline" className="ml-2">
+                                {isGitLab ? "GitLab" : "GitHub"}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {selectedRepoObj && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {repoProvider === "github" ? "Native" : "API"} deployment
+                  </Badge>
+                  {repoProvider === "gitlab" && !user?.gitlabToken && (
+                    <span className="text-xs text-muted-foreground">
+                      (GitLab token required)
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="branch-input">Branch</Label>
@@ -360,8 +456,9 @@ export function DeployToFirebaseDialog({
             disabled={
               isLoading ||
               !hasGoogleToken ||
-              !selectedRepo ||
               !selectedFirebaseProject ||
+              (deploymentsWithRepos.length > 0 && !selectedDeploymentId) ||
+              (deploymentsWithRepos.length === 0 && !selectedRepo) ||
               (repoProvider === "github" && !hasGithubToken) ||
               (repoProvider === "gitlab" && !(user as any)?.gitlabToken)
             }

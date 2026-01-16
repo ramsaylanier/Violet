@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Flame,
   Plus,
@@ -80,52 +80,57 @@ export function ProjectIntegrations({
   onUpdate
 }: ProjectIntegrationsProps) {
   const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [firebaseProjectId, setFirebaseProjectId] = useState("");
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [availableProjects, setAvailableProjects] = useState<
-    FirebaseProjectType[]
-  >([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"select" | "manual">("select");
-  const [needsAuth, setNeedsAuth] = useState(false);
   const { user } = useCurrentUser();
 
   const hasFirebaseProject = !!project.firebaseProjectId;
   const isGoogleConnected = !!user?.googleToken;
 
-  const loadFirebaseProjects = async () => {
-    try {
-      setLoadingProjects(true);
-      setError(null);
-      const projects = await listFirebaseProjects();
-      setAvailableProjects(projects);
-      setNeedsAuth(false);
-    } catch (err: any) {
-      console.error("Failed to load Firebase projects:", err);
-      if (
-        err?.message?.includes("Google account not connected") ||
-        err?.message?.includes("needsAuth")
-      ) {
-        setNeedsAuth(true);
-      } else {
-        setError(err?.message || "Failed to load Firebase projects");
+  // Fetch Firebase projects using useQuery
+  const {
+    data: availableProjects = [],
+    isLoading: loadingProjects,
+    error: projectsError
+  } = useQuery({
+    queryKey: ["firebase-projects"],
+    queryFn: async () => {
+      try {
+        return await listFirebaseProjects();
+      } catch (err: any) {
+        if (
+          err?.message?.includes("Google account not connected") ||
+          err?.message?.includes("needsAuth")
+        ) {
+          throw new Error("needsAuth");
+        }
+        throw err;
       }
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
+    },
+    enabled: dialogOpen && dialogMode === "select" && isGoogleConnected,
+    retry: 1
+  });
 
+  const needsAuth =
+    projectsError instanceof Error && projectsError.message === "needsAuth";
+
+  // Update error state when query error changes
   useEffect(() => {
-    if (dialogOpen && dialogMode === "select") {
-      loadFirebaseProjects();
+    if (projectsError && !needsAuth) {
+      const errorMessage =
+        projectsError instanceof Error
+          ? projectsError.message
+          : "Failed to load Firebase projects";
+      setError(errorMessage);
+    } else if (!projectsError) {
+      setError(null);
     }
-  }, [dialogOpen, dialogMode]);
+  }, [projectsError, needsAuth]);
 
   const handleConnectGoogle = async () => {
     try {
@@ -137,7 +142,34 @@ export function ProjectIntegrations({
     }
   };
 
-  const handleAddFirebaseProject = async () => {
+  const addFirebaseProjectMutation = useMutation({
+    mutationFn: async (projectIdToAdd: string) => {
+      // Verify the Firebase project ID
+      await verifyFirebaseProject(projectIdToAdd);
+      // Update the project with the Firebase project ID
+      return await updateProject(project.id, {
+        firebaseProjectId: projectIdToAdd
+      });
+    },
+    onSuccess: (updatedProject) => {
+      onUpdate(updatedProject);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+      setDialogOpen(false);
+      setFirebaseProjectId("");
+      setSelectedProject("");
+      setComboboxOpen(false);
+    },
+    onError: (err: any) => {
+      console.error("Failed to add Firebase project:", err);
+      setError(
+        err?.message ||
+          "Failed to add Firebase project. Please check the project ID."
+      );
+    }
+  });
+
+  const handleAddFirebaseProject = () => {
     let projectIdToAdd: string;
 
     if (dialogMode === "select") {
@@ -154,36 +186,8 @@ export function ProjectIntegrations({
       projectIdToAdd = firebaseProjectId.trim();
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      setValidating(true);
-
-      // Verify the Firebase project ID
-      await verifyFirebaseProject(projectIdToAdd);
-
-      // Update the project with the Firebase project ID
-      const updatedProject = await updateProject(project.id, {
-        firebaseProjectId: projectIdToAdd
-      });
-
-      onUpdate(updatedProject);
-      // Invalidate projects list to refetch
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDialogOpen(false);
-      setFirebaseProjectId("");
-      setSelectedProject("");
-      setComboboxOpen(false);
-    } catch (err: any) {
-      console.error("Failed to add Firebase project:", err);
-      setError(
-        err?.message ||
-          "Failed to add Firebase project. Please check the project ID."
-      );
-    } finally {
-      setLoading(false);
-      setValidating(false);
-    }
+    setError(null);
+    addFirebaseProjectMutation.mutate(projectIdToAdd);
   };
 
   const handleRemoveClick = () => {
@@ -191,26 +195,27 @@ export function ProjectIntegrations({
     setError(null);
   };
 
-  const handleRemoveFirebaseProject = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Remove the Firebase project ID from the project
-      const updatedProject = await updateProject(project.id, {
+  const removeFirebaseProjectMutation = useMutation({
+    mutationFn: async () => {
+      return await updateProject(project.id, {
         firebaseProjectId: null as any
       });
-
+    },
+    onSuccess: (updatedProject) => {
       onUpdate(updatedProject);
-      // Invalidate projects list to refetch
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       setRemoveDialogOpen(false);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to remove Firebase project:", err);
       setError(err?.message || "Failed to remove Firebase project");
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleRemoveFirebaseProject = () => {
+    setError(null);
+    removeFirebaseProjectMutation.mutate();
   };
 
   return (
@@ -254,9 +259,7 @@ export function ProjectIntegrations({
                           onClick={() => {
                             setDialogMode("select");
                             setError(null);
-                            if (dialogMode !== "select") {
-                              loadFirebaseProjects();
-                            }
+                            // Query will automatically refetch when enabled
                           }}
                           className="flex-1"
                         >
@@ -392,11 +395,14 @@ export function ProjectIntegrations({
                               setError(null);
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" && !loading) {
+                              if (
+                                e.key === "Enter" &&
+                                !addFirebaseProjectMutation.isPending
+                              ) {
                                 handleAddFirebaseProject();
                               }
                             }}
-                            disabled={loading}
+                            disabled={addFirebaseProjectMutation.isPending}
                           />
                           <p className="text-xs text-muted-foreground">
                             The project ID can be found in your Firebase Console
@@ -418,28 +424,22 @@ export function ProjectIntegrations({
                           setSelectedProject("");
                           setComboboxOpen(false);
                           setError(null);
-                          setNeedsAuth(false);
                         }}
-                        disabled={loading}
+                        disabled={addFirebaseProjectMutation.isPending}
                       >
                         Cancel
                       </Button>
                       <Button
                         onClick={handleAddFirebaseProject}
                         disabled={
-                          loading ||
+                          addFirebaseProjectMutation.isPending ||
                           (dialogMode === "select" && !selectedProject) ||
                           (dialogMode === "manual" &&
                             !firebaseProjectId.trim()) ||
                           (dialogMode === "select" && needsAuth)
                         }
                       >
-                        {validating ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Validating...
-                          </>
-                        ) : loading ? (
+                        {addFirebaseProjectMutation.isPending ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Adding...
@@ -520,15 +520,17 @@ export function ProjectIntegrations({
                     <div className="text-sm text-destructive">{error}</div>
                   )}
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={loading}>
+                    <AlertDialogCancel
+                      disabled={removeFirebaseProjectMutation.isPending}
+                    >
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleRemoveFirebaseProject}
-                      disabled={loading}
+                      disabled={removeFirebaseProjectMutation.isPending}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      {loading ? (
+                      {removeFirebaseProjectMutation.isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Removing...
@@ -544,7 +546,7 @@ export function ProjectIntegrations({
               <Button
                 variant="outline"
                 onClick={handleRemoveClick}
-                disabled={loading}
+                disabled={removeFirebaseProjectMutation.isPending}
                 className="w-full sm:w-auto"
               >
                 <Trash2 className="w-4 h-4 mr-2" />

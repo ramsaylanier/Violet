@@ -13,6 +13,13 @@ import {
   CardHeader,
   CardTitle
 } from "@/client/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/client/components/ui/select";
 import { createProject, updateProject } from "@/client/api/projects";
 import { createGitHubRepository } from "@/client/api/github";
 
@@ -25,6 +32,9 @@ function NewProject() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [projectName, setProjectName] = useState("");
+  const [projectType, setProjectType] = useState<"monorepo" | "multi-service">(
+    "multi-service"
+  );
   const [createGithubRepo, setCreateGithubRepo] = useState(false);
   const [error, setError] = useState("");
 
@@ -76,25 +86,48 @@ function NewProject() {
 
       // Create the project using mutation
       const project = await createProjectMutation.mutateAsync({
-        name: projectName
+        name: projectName,
+        type: projectType
       });
 
-      // If GitHub repo was created, update the project with repo information
+      // If GitHub repo was created, handle based on project type
       if (githubRepo) {
         const [owner, repoName] = githubRepo.full_name.split("/");
-        await updateProjectMutation.mutateAsync({
-          projectId: project.id,
-          updates: {
-            repositories: [
-              {
-                owner,
-                name: repoName,
-                fullName: githubRepo.full_name,
-                url: githubRepo.html_url
-              }
-            ]
-          }
-        });
+        const repoInfo = {
+          owner,
+          name: repoName,
+          fullName: githubRepo.full_name,
+          url: githubRepo.html_url
+        };
+
+        if (projectType === "multi-service") {
+          // For multi-service: create a deployment automatically
+          const deploymentId = crypto.randomUUID();
+          const deployment = {
+            id: deploymentId,
+            name: projectName, // Use project name as default deployment name
+            repository: repoInfo,
+            domains: [],
+            hosting: [],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+
+          await updateProjectMutation.mutateAsync({
+            projectId: project.id,
+            updates: {
+              deployments: [deployment]
+            }
+          });
+        } else {
+          // For monorepo: just add repository, deployments created later
+          await updateProjectMutation.mutateAsync({
+            projectId: project.id,
+            updates: {
+              repositories: [repoInfo]
+            }
+          });
+        }
       }
 
       // Navigate to the newly created project
@@ -137,6 +170,29 @@ function NewProject() {
                 disabled={loading}
                 placeholder="My Awesome Project"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectType">Project Type</Label>
+              <Select
+                value={projectType}
+                onValueChange={(value) =>
+                  setProjectType(value as "monorepo" | "multi-service")
+                }
+                disabled={loading}
+              >
+                <SelectTrigger id="projectType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="multi-service">Multi-Service</SelectItem>
+                  <SelectItem value="monorepo">Monorepo</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {projectType === "monorepo"
+                  ? "One repository with multiple deployments (e.g., Marketing Website, API, Client App)"
+                  : "One repository per deployment (1:1 relationship)"}
+              </p>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox

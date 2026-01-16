@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import Header from "@/client/components/Header";
 
 export const Route = createFileRoute("/_app")({
-  component: Index
+  component: AppLayout
 });
 
-function Index() {
+function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 

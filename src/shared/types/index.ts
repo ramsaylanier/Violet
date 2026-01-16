@@ -1,10 +1,45 @@
+export interface Deployment {
+  id: string;
+  name: string; // e.g., "Marketing Website", "API", "Client App"
+  description?: string;
+  repository?: {
+    owner: string;
+    name: string;
+    fullName: string;
+    url: string;
+  };
+  domains?: Array<{
+    zoneId?: string;
+    zoneName: string;
+    provider: "cloudflare" | "firebase";
+    linkedAt: Date;
+    siteId?: string; // For Firebase domains
+    status?: string; // For Firebase domain status
+  }>;
+  hosting?: Hosting[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Hosting {
+  id: string;
+  provider: "cloudflare-pages" | "firebase-hosting";
+  name: string;
+  url?: string;
+  status?: string;
+  linkedAt: Date;
+}
+
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  type?: "monorepo" | "multi-service"; // NEW - optional for backward compatibility
   createdAt: Date;
   updatedAt: Date;
   userId: string; // Added for querying
+  deployments?: Deployment[]; // NEW - replaces repositories, domains, hosting
+  // Legacy fields - kept for backward compatibility during migration
   repositories?: Array<{
     owner: string;
     name: string;
@@ -27,14 +62,7 @@ export interface Project {
     siteId?: string; // For Firebase domains
     status?: string; // For Firebase domain status
   }>;
-  hosting?: Array<{
-    id: string;
-    provider: "cloudflare-pages" | "firebase-hosting";
-    name: string;
-    url?: string;
-    status?: string;
-    linkedAt: Date;
-  }>;
+  hosting?: Hosting[];
   settings: ProjectSettings;
   metadata: Record<string, unknown>;
 }

@@ -12,6 +12,7 @@ export async function listProjects(): Promise<Project[]> {
 export async function createProject(data: {
   name: string;
   description?: string;
+  type?: "monorepo" | "multi-service";
   settings?: ProjectSettings;
   metadata?: { [key: string]: string };
 }): Promise<Project> {

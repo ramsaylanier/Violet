@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Trash2,
@@ -79,6 +79,13 @@ import {
   addFirebaseDomain
 } from "@/client/api/firebase";
 import { Input } from "@/client/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/client/components/ui/select";
 
 interface ProjectDomainsProps {
   project: Project;
@@ -87,7 +94,6 @@ interface ProjectDomainsProps {
 
 export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
   const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState<string>("");
@@ -115,13 +121,15 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
     useState<CloudflareDNSRecord | null>(null);
   const { user } = useCurrentUser();
 
-  const projectDomains = project.domains || [];
+  const deployments = project.deployments || [];
+  const projectDomains = project.domains || []; // Legacy support
   const isCloudflareConnected = !!user?.cloudflareToken;
   const isGoogleConnected = !!user?.googleToken;
   const [firebaseDialogOpen, setFirebaseDialogOpen] = useState(false);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const [firebaseDomainName, setFirebaseDomainName] = useState<string>("");
   const [firebaseComboboxOpen, setFirebaseComboboxOpen] = useState(false);
+  const [selectedDeploymentId, setSelectedDeploymentId] = useState<string>("");
 
   // Fetch Cloudflare zones using useQuery
   const {
@@ -153,7 +161,7 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
         firebaseDialogOpen && !!project.firebaseProjectId && isGoogleConnected
     });
 
-  // Set error from zones query if it exists
+  // Update error state when zones query error changes
   useEffect(() => {
     if (zonesError) {
       setError(
@@ -161,6 +169,8 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
           ? zonesError.message
           : "Failed to load domains"
       );
+    } else if (!zonesError) {
+      setError(null);
     }
   }, [zonesError]);
 
@@ -208,49 +218,100 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
     }
   };
 
-  const handleAddDomain = async () => {
-    if (!selectedZone) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const zone = availableZones.find((z) => z.id === selectedZone);
+  const addDomainMutation = useMutation({
+    mutationFn: async ({
+      zoneId,
+      deploymentId
+    }: {
+      zoneId: string;
+      deploymentId?: string;
+    }) => {
+      const zone = availableZones.find((z) => z.id === zoneId);
       if (!zone) {
         throw new Error("Zone not found");
       }
 
-      // Check if domain is already linked
-      if (projectDomains.some((d) => d.zoneId === zone.id)) {
-        setError("This domain is already linked to this project");
-        return;
-      }
+      if (deployments.length > 0) {
+        if (!deploymentId) {
+          throw new Error("Please select a deployment");
+        }
 
-      // Add to existing domains array
-      const updatedDomains = [
-        ...projectDomains,
-        {
+        const selectedDeployment = deployments.find((d) => d.id === deploymentId);
+        if (!selectedDeployment) {
+          throw new Error("Selected deployment not found");
+        }
+
+        // Check if domain is already linked to this deployment
+        if (selectedDeployment.domains?.some((d) => d.zoneId === zone.id)) {
+          throw new Error("This domain is already linked to this deployment");
+        }
+
+        const newDomain = {
           zoneId: zone.id,
           zoneName: zone.name,
           provider: "cloudflare" as const,
           linkedAt: new Date()
-        }
-      ];
-      const updatedProject = await updateProject(project.id, {
-        domains: updatedDomains
-      });
+        };
 
+        const updatedDeployments = deployments.map((d) =>
+          d.id === deploymentId
+            ? {
+                ...d,
+                domains: [...(d.domains || []), newDomain],
+                updatedAt: new Date()
+              }
+            : d
+        );
+        return await updateProject(project.id, {
+          deployments: updatedDeployments
+        });
+      } else {
+        // Legacy: Add to project-level domains
+        if (projectDomains.some((d) => d.zoneId === zone.id)) {
+          throw new Error("This domain is already linked to this project");
+        }
+
+        const updatedDomains = [
+          ...projectDomains,
+          {
+            zoneId: zone.id,
+            zoneName: zone.name,
+            provider: "cloudflare" as const,
+            linkedAt: new Date()
+          }
+        ];
+        return await updateProject(project.id, {
+          domains: updatedDomains
+        });
+      }
+    },
+    onSuccess: (updatedProject) => {
       onUpdate(updatedProject);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       setDialogOpen(false);
       setSelectedZone("");
+      setSelectedDeploymentId("");
       setComboboxOpen(false);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to add domain:", err);
       setError(err?.message || "Failed to add domain");
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleAddDomain = () => {
+    if (!selectedZone) return;
+    if (!selectedDeploymentId && deployments.length > 0) {
+      setError("Please select a deployment");
+      return;
+    }
+
+    setError(null);
+    addDomainMutation.mutate({
+      zoneId: selectedZone,
+      deploymentId: selectedDeploymentId
+    });
   };
 
   const handleRemoveClick = (domain: { zoneId: string; zoneName: string }) => {
@@ -259,71 +320,68 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
     setError(null);
   };
 
-  const handleRemoveDomain = async () => {
-    if (!zoneToRemove) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Remove from project domains array
+  const removeDomainMutation = useMutation({
+    mutationFn: async (zoneToRemove: { zoneId: string; zoneName: string }) => {
       const updatedDomains = projectDomains.filter(
         (d) =>
           (d.provider === "cloudflare" && d.zoneId !== zoneToRemove.zoneId) ||
           (d.provider === "firebase" && d.zoneName !== zoneToRemove.zoneName)
       );
-      const updatedProject = await updateProject(project.id, {
+      return await updateProject(project.id, {
         domains: updatedDomains.length > 0 ? updatedDomains : []
       });
-
+    },
+    onSuccess: (updatedProject) => {
       onUpdate(updatedProject);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       setRemoveDialogOpen(false);
       setZoneToRemove(null);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to remove domain:", err);
       setError(err?.message || "Failed to remove domain");
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleRemoveDomain = () => {
+    if (!zoneToRemove) return;
+    setError(null);
+    removeDomainMutation.mutate(zoneToRemove);
   };
 
-  const handleAddFirebaseDomain = async () => {
-    if (!selectedSiteId || !firebaseDomainName.trim()) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
+  const addFirebaseDomainMutation = useMutation({
+    mutationFn: async ({
+      siteId,
+      domainName
+    }: {
+      siteId: string;
+      domainName: string;
+    }) => {
       // Validate domain format
       const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i;
-      if (!domainRegex.test(firebaseDomainName.trim())) {
-        setError("Invalid domain format");
-        return;
+      if (!domainRegex.test(domainName.trim())) {
+        throw new Error("Invalid domain format");
       }
 
       // Check if domain is already linked
       if (
         projectDomains.some(
-          (d) =>
-            d.provider === "firebase" &&
-            d.zoneName === firebaseDomainName.trim()
+          (d) => d.provider === "firebase" && d.zoneName === domainName.trim()
         )
       ) {
-        setError("This domain is already linked to this project");
-        return;
+        throw new Error("This domain is already linked to this project");
       }
 
       // Add domain to Firebase Hosting
       if (!project.firebaseProjectId) {
-        setError("Firebase project ID is required");
-        return;
+        throw new Error("Firebase project ID is required");
       }
 
       const result = await addFirebaseDomain(
-        selectedSiteId,
+        siteId,
         project.firebaseProjectId,
-        firebaseDomainName.trim()
+        domainName.trim()
       );
 
       // Add to project domains
@@ -333,56 +391,85 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
           zoneName: result.domain,
           provider: "firebase" as const,
           linkedAt: new Date(),
-          siteId: selectedSiteId,
+          siteId,
           status: result.status
         }
       ];
 
-      const updatedProject = await updateProject(project.id, {
+      return await updateProject(project.id, {
         domains: updatedDomains
       });
-
+    },
+    onSuccess: (updatedProject) => {
       onUpdate(updatedProject);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", project.id] });
       setFirebaseDialogOpen(false);
       setSelectedSiteId("");
       setFirebaseDomainName("");
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to add Firebase domain:", err);
       setError(err?.message || "Failed to add domain to Firebase");
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleAddFirebaseDomain = () => {
+    if (!selectedSiteId || !firebaseDomainName.trim()) return;
+    setError(null);
+    addFirebaseDomainMutation.mutate({
+      siteId: selectedSiteId,
+      domainName: firebaseDomainName
+    });
   };
 
-  const handleDeleteDNSRecord = async () => {
-    if (!recordToDelete || !selectedZoneForDns) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      await deleteCloudflareDNSRecord(
-        selectedZoneForDns.zoneId,
-        recordToDelete.id
-      );
-
+  const deleteDNSRecordMutation = useMutation({
+    mutationFn: async ({
+      zoneId,
+      recordId
+    }: {
+      zoneId: string;
+      recordId: string;
+    }) => {
+      await deleteCloudflareDNSRecord(zoneId, recordId);
+      return { zoneId };
+    },
+    onSuccess: ({ zoneId }) => {
       // Reload DNS records
-      loadDNSRecords(selectedZoneForDns.zoneId, selectedZoneForDns.zoneName);
+      const zone = availableZones.find((z) => z.id === zoneId);
+      if (zone) {
+        loadDNSRecords(zoneId, zone.name);
+      }
       setDeleteRecordDialogOpen(false);
       setRecordToDelete(null);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       console.error("Failed to delete DNS record:", err);
       setError(err?.message || "Failed to delete DNS record");
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleDeleteDNSRecord = () => {
+    if (!recordToDelete || !selectedZoneForDns) return;
+    setError(null);
+    deleteDNSRecordMutation.mutate({
+      zoneId: selectedZoneForDns.zoneId,
+      recordId: recordToDelete.id
+    });
   };
 
   // Filter out already linked domains from the select list
-  const availableZonesToAdd = availableZones.filter(
-    (zone) => !projectDomains.some((d) => d.zoneId === zone.id)
-  );
+  const availableZonesToAdd =
+    deployments.length > 0
+      ? availableZones.filter((zone) => {
+          // Check if domain is linked to any deployment
+          return !deployments.some((d) =>
+            d.domains?.some((domain) => domain.zoneId === zone.id)
+          );
+        })
+      : availableZones.filter(
+          (zone) => !projectDomains.some((d) => d.zoneId === zone.id)
+        );
 
   return (
     <div className="space-y-4">
@@ -406,11 +493,37 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
                 <DialogHeader>
                   <DialogTitle>Link Domain</DialogTitle>
                   <DialogDescription>
-                    Link an existing Cloudflare domain to this project
+                    Link an existing Cloudflare domain to a deployment
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
+                  {deployments.length > 0 && (
+                    <div>
+                      <Label htmlFor="deployment-select">Deployment *</Label>
+                      <Select
+                        value={selectedDeploymentId}
+                        onValueChange={(value) => {
+                          setSelectedDeploymentId(value);
+                          setError(null);
+                        }}
+                      >
+                        <SelectTrigger id="deployment-select" className="mt-2">
+                          <SelectValue placeholder="Select a deployment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {deployments.map((deployment) => (
+                            <SelectItem
+                              key={deployment.id}
+                              value={deployment.id}
+                            >
+                              {deployment.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="zone-select">Domain</Label>
                     {loadingZones ? (
@@ -519,15 +632,19 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
                       setSelectedZone("");
                       setComboboxOpen(false);
                     }}
-                    disabled={loading}
+                    disabled={addFirebaseDomainMutation.isPending}
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleAddDomain}
-                    disabled={loading || !selectedZone}
+                    disabled={
+                      addDomainMutation.isPending ||
+                      !selectedZone ||
+                      (deployments.length > 0 && !selectedDeploymentId)
+                    }
                   >
-                    {loading && (
+                    {addDomainMutation.isPending && (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     )}
                     Link Domain
@@ -685,17 +802,19 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
                       setFirebaseDomainName("");
                       setFirebaseComboboxOpen(false);
                     }}
-                    disabled={loading}
+                    disabled={addFirebaseDomainMutation.isPending}
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleAddFirebaseDomain}
                     disabled={
-                      loading || !selectedSiteId || !firebaseDomainName.trim()
+                      addFirebaseDomainMutation.isPending ||
+                      !selectedSiteId ||
+                      !firebaseDomainName.trim()
                     }
                   >
-                    {loading && (
+                    {addFirebaseDomainMutation.isPending && (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     )}
                     Add Domain
@@ -730,7 +849,285 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
         </div>
       </div>
 
-      {projectDomains.length > 0 ? (
+      {/* Show domains from deployments */}
+      {deployments.some((d) => d.domains && d.domains.length > 0) ? (
+        <div className="space-y-6">
+          {deployments
+            .filter((d) => d.domains && d.domains.length > 0)
+            .map((deployment) => (
+              <div key={deployment.id} className="space-y-2">
+                <h4 className="text-sm font-semibold text-muted-foreground">
+                  {deployment.name}
+                </h4>
+                <div className="space-y-4">
+                  {deployment.domains!.map((domain, index) => {
+                    const isCloudflareDomain = domain.provider === "cloudflare";
+                    const isFirebaseDomain = domain.provider === "firebase";
+                    const zone = isCloudflareDomain
+                      ? availableZones.find((z) => z.id === domain.zoneId)
+                      : null;
+                    const isExpanded = isCloudflareDomain
+                      ? expandedZones[domain.zoneId || ""]
+                      : false;
+                    const records = isCloudflareDomain
+                      ? dnsRecords[domain.zoneId || ""]
+                      : null;
+                    const domainKey = isCloudflareDomain
+                      ? domain.zoneId
+                      : `firebase-${domain.zoneName}-${index}`;
+
+                    return (
+                      <Card key={domainKey}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="flex items-center gap-2">
+                                {isFirebaseDomain ? (
+                                  <Flame className="w-5 h-5" />
+                                ) : (
+                                  <Globe className="w-5 h-5" />
+                                )}
+                                {domain.zoneName}
+                              </CardTitle>
+                              {isCloudflareDomain && zone && (
+                                <Badge
+                                  variant={
+                                    zone.status === "active"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                >
+                                  {zone.status}
+                                </Badge>
+                              )}
+                              {isFirebaseDomain && domain.status && (
+                                <Badge
+                                  variant={
+                                    domain.status === "ACTIVE"
+                                      ? "default"
+                                      : domain.status === "PENDING"
+                                        ? "secondary"
+                                        : "destructive"
+                                  }
+                                >
+                                  {domain.status}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="capitalize">
+                                {domain.provider}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isCloudflareDomain && zone && (
+                                <a
+                                  href={`https://dash.cloudflare.com/${zone?.account?.id || ""}/dns`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                >
+                                  <Settings className="w-4 h-4" />
+                                  Manage
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                              {isFirebaseDomain &&
+                                project.firebaseProjectId && (
+                                  <a
+                                    href={`https://console.firebase.google.com/project/${project.firebaseProjectId}/hosting`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                  >
+                                    <Settings className="w-4 h-4" />
+                                    Manage
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  // Remove domain from deployment
+                                  const updatedDeployments = deployments.map(
+                                    (d) =>
+                                      d.id === deployment.id
+                                        ? {
+                                            ...d,
+                                            domains:
+                                              d.domains?.filter(
+                                                (dd) =>
+                                                  (isCloudflareDomain &&
+                                                    dd.zoneId !==
+                                                      domain.zoneId) ||
+                                                  (isFirebaseDomain &&
+                                                    dd.zoneName !==
+                                                      domain.zoneName)
+                                              ) || [],
+                                            updatedAt: new Date()
+                                          }
+                                        : d
+                                  );
+                                  const updated = await updateProject(
+                                    project.id,
+                                    {
+                                      deployments: updatedDeployments
+                                    }
+                                  );
+                                  onUpdate(updated);
+                                  queryClient.invalidateQueries({
+                                    queryKey: ["projects"]
+                                  });
+                                }}
+                                disabled={addFirebaseDomainMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* DNS Records and other domain details - similar to original */}
+                          {isCloudflareDomain && zone && (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <div className="text-muted-foreground">
+                                  Type
+                                </div>
+                                <div className="font-medium capitalize">
+                                  {zone.type}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">
+                                  Plan
+                                </div>
+                                <div className="font-medium">
+                                  {zone.plan?.name || "Free"}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {isFirebaseDomain && domain.siteId && (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <div className="text-muted-foreground">
+                                  Site ID
+                                </div>
+                                <div className="font-medium">
+                                  {domain.siteId}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground">
+                                  Status
+                                </div>
+                                <div className="font-medium capitalize">
+                                  {domain.status || "Unknown"}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* DNS Records Section - Only for Cloudflare */}
+                          {isCloudflareDomain && isCloudflareConnected && (
+                            <Collapsible
+                              open={isExpanded}
+                              onOpenChange={() =>
+                                toggleZoneExpansion(
+                                  domain.zoneId || "",
+                                  domain.zoneName
+                                )
+                              }
+                            >
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-between p-0 h-auto hover:bg-transparent"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                    <span className="text-sm font-medium">
+                                      DNS Records
+                                    </span>
+                                    {records?.records && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="ml-2"
+                                      >
+                                        {records.records.length}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="space-y-2 mt-2">
+                                {records?.loading ? (
+                                  <div className="flex items-center gap-2 py-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span className="text-sm text-muted-foreground">
+                                      Loading DNS records...
+                                    </span>
+                                  </div>
+                                ) : !records ||
+                                  records?.records.length === 0 ? (
+                                  <div className="text-sm text-muted-foreground py-2">
+                                    No DNS records found
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {records?.records
+                                      ?.slice(0, 10)
+                                      .map((record) => (
+                                        <div
+                                          key={record.id}
+                                          className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm hover:bg-muted/80"
+                                        >
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <Badge
+                                                variant="outline"
+                                                className="font-mono"
+                                              >
+                                                {record.type}
+                                              </Badge>
+                                              <span className="font-medium truncate">
+                                                {record.name}
+                                              </span>
+                                              {record.proxied && (
+                                                <Badge
+                                                  variant="secondary"
+                                                  className="text-xs"
+                                                >
+                                                  Proxied
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1 truncate">
+                                              {record.content}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                  </div>
+                                )}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+        </div>
+      ) : projectDomains.length > 0 ? (
+        // Legacy: Show project-level domains if no deployments
         <div className="space-y-4">
           {projectDomains.map((domain, index) => {
             const isCloudflareDomain = domain.provider === "cloudflare";
@@ -821,7 +1218,7 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
                             zoneName: domain.zoneName
                           })
                         }
-                        disabled={loading}
+                        disabled={addFirebaseDomainMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -1054,8 +1451,13 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemoveDomain} disabled={loading}>
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            <AlertDialogAction
+              onClick={handleRemoveDomain}
+              disabled={removeDomainMutation.isPending}
+            >
+              {removeDomainMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1109,10 +1511,12 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteDNSRecord}
-              disabled={loading}
+                                disabled={deleteDNSRecordMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {deleteDNSRecordMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
