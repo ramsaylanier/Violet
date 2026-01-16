@@ -37,7 +37,7 @@ import type { Project, Deployment, GitHubIssue } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import { listGitHubIssues } from "@/client/api/github";
 import { updateProject } from "@/client/api/projects";
-import { CreateDeploymentDialog } from "@/client/components/CreateDeploymentDialog";
+import { CreateDeploymentDialog } from "@/client/components/deployment/CreateDeploymentDialog";
 import {
   Collapsible,
   CollapsibleContent,

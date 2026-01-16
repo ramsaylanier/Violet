@@ -79,8 +79,10 @@ export function ProjectList() {
                 <div className="flex gap-2">
                   {(() => {
                     const repos = getProjectRepositories(project);
-                    return repos.length > 0 && (
-                      <Github className="w-4 h-4 text-muted-foreground" />
+                    return (
+                      repos.length > 0 && (
+                        <Github className="w-4 h-4 text-muted-foreground" />
+                      )
                     );
                   })()}
                   {project.firebaseProjectId && (
@@ -96,13 +98,15 @@ export function ProjectList() {
               <div className="text-sm text-muted-foreground space-y-1">
                 {(() => {
                   const repos = getProjectRepositories(project);
-                  return repos.length > 0 && (
-                    <div>
-                      GitHub:{" "}
-                      {repos.length === 1
-                        ? repos[0].fullName
-                        : `${repos.length} repositories`}
-                    </div>
+                  return (
+                    repos.length > 0 && (
+                      <div>
+                        GitHub:{" "}
+                        {repos.length === 1
+                          ? repos[0].fullName
+                          : `${repos.length} repositories`}
+                      </div>
+                    )
                   );
                 })()}
                 {project.firebaseProjectId && (

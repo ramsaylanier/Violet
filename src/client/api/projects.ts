@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from "./client.js";
-import type { Project, ProjectSettings, Hosting } from "@/shared/types";
+import type { Project, ProjectSettings } from "@/shared/types";
 
 export async function listProjects(): Promise<Project[]> {
   return apiGet<Project[]>("/projects");

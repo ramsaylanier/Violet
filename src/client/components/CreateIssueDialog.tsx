@@ -109,9 +109,7 @@ export function CreateIssueDialog({
 
       if (existingIssues) {
         // Find the repository info
-        const repoInfo = projectRepos.find(
-          (r) => r.fullName === newIssueRepo
-        );
+        const repoInfo = projectRepos.find((r) => r.fullName === newIssueRepo);
 
         if (repoInfo) {
           // Transform the created issue to match the expected format

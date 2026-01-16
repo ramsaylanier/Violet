@@ -20,7 +20,12 @@ import {
 import { Button } from "@/client/components/ui/button";
 import { Badge } from "@/client/components/ui/badge";
 import { Github, Flame, ArrowLeft, Globe, Rocket } from "lucide-react";
-import { cn, getProjectRepositories, getProjectDomains, getProjectHosting } from "@/client/lib/utils";
+import {
+  cn,
+  getProjectRepositories,
+  getProjectDomains,
+  getProjectHosting
+} from "@/client/lib/utils";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
   component: ProjectLayout
@@ -169,11 +174,13 @@ function ProjectLayoutContent() {
           )}
           {(() => {
             const repos = getProjectRepositories(project);
-            return repos.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <Github className="w-3 h-3" />
-                GitHub ({repos.length})
-              </Badge>
+            return (
+              repos.length > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <Github className="w-3 h-3" />
+                  GitHub ({repos.length})
+                </Badge>
+              )
             );
           })()}
           {project.firebaseProjectId && (
@@ -184,20 +191,24 @@ function ProjectLayoutContent() {
           )}
           {(() => {
             const domains = getProjectDomains(project);
-            return domains.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <Globe className="w-3 h-3" />
-                Domains ({domains.length})
-              </Badge>
+            return (
+              domains.length > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <Globe className="w-3 h-3" />
+                  Domains ({domains.length})
+                </Badge>
+              )
             );
           })()}
           {(() => {
             const hosting = getProjectHosting(project);
-            return hosting.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <Rocket className="w-3 h-3" />
-                Hosting ({hosting.length})
-              </Badge>
+            return (
+              hosting.length > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <Rocket className="w-3 h-3" />
+                  Hosting ({hosting.length})
+                </Badge>
+              )
             );
           })()}
         </div>

@@ -17,13 +17,13 @@ export function getProjectRepositories(project: Project): Array<{
 }> {
   const deployments = project.deployments || [];
   const repoMap = new Map<string, NonNullable<Deployment["repository"]>>();
-  
+
   for (const deployment of deployments) {
     if (deployment.repository) {
       repoMap.set(deployment.repository.fullName, deployment.repository);
     }
   }
-  
+
   return Array.from(repoMap.values());
 }
 
@@ -40,13 +40,13 @@ export function getProjectDomains(project: Project) {
     siteId?: string;
     status?: string;
   }> = [];
-  
+
   for (const deployment of deployments) {
     if (deployment.domains) {
       domains.push(...deployment.domains);
     }
   }
-  
+
   return domains;
 }
 
@@ -56,12 +56,12 @@ export function getProjectDomains(project: Project) {
 export function getProjectHosting(project: Project): Hosting[] {
   const deployments = project.deployments || [];
   const hosting: Hosting[] = [];
-  
+
   for (const deployment of deployments) {
     if (deployment.hosting) {
       hosting.push(...deployment.hosting);
     }
   }
-  
+
   return hosting;
 }
