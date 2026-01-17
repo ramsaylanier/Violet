@@ -1,10 +1,14 @@
 import { Octokit } from "@octokit/rest";
+import yaml from "js-yaml";
 import type {
   GitHubRepository,
   GitHubIssue,
   GitHubIssueComment,
   GitHubProject,
-  GitHubProjectItem
+  GitHubProjectItem,
+  GitHubWorkflow,
+  GitHubWorkflowInput,
+  GitHubWorkflowRun
 } from "@/shared/types";
 
 export function createGitHubClient(token: string): Octokit {
@@ -292,27 +296,338 @@ export async function listIssues(
   }));
 }
 
-export async function listWorkflows(
+export async function listWorkflowRuns(
   token: string,
   owner: string,
-  repo: string
-) {
+  repo: string,
+  options?: {
+    workflowId?: number;
+    branch?: string;
+    event?: string;
+    status?:
+      | "completed"
+      | "action_required"
+      | "cancelled"
+      | "failure"
+      | "neutral"
+      | "skipped"
+      | "stale"
+      | "success"
+      | "timed_out"
+      | "in_progress"
+      | "queued"
+      | "requested"
+      | "waiting";
+    per_page?: number;
+  }
+): Promise<GitHubWorkflowRun[]> {
   const octokit = createGitHubClient(token);
-  const response = await octokit.actions.listWorkflowRunsForRepo({
-    owner,
-    repo,
-    per_page: 10
-  });
+
+  let response;
+  if (options?.workflowId) {
+    response = await octokit.actions.listWorkflowRuns({
+      owner,
+      repo,
+      workflow_id: options.workflowId,
+      branch: options.branch,
+      event: options.event,
+      status: options.status,
+      per_page: options.per_page || 30
+    });
+  } else {
+    response = await octokit.actions.listWorkflowRunsForRepo({
+      owner,
+      repo,
+      branch: options?.branch,
+      event: options?.event,
+      status: options?.status,
+      per_page: options?.per_page || 30
+    });
+  }
 
   return response.data.workflow_runs.map((run) => ({
     id: run.id,
-    name: run.name,
-    status: run.status,
-    conclusion: run.conclusion,
+    name: run.name || "",
+    display_title: run.display_title || undefined,
+    status: run.status as "queued" | "in_progress" | "completed",
+    conclusion: run.conclusion as
+      | "success"
+      | "failure"
+      | "neutral"
+      | "cancelled"
+      | "skipped"
+      | "timed_out"
+      | "action_required"
+      | null,
+    workflow_id: run.workflow_id,
+    head_branch: run.head_branch ?? null,
+    head_sha: run.head_sha,
+    run_number: run.run_number,
+    run_attempt: run.run_attempt,
+    event: run.event,
+    actor: {
+      login: run.actor?.login || "",
+      avatar_url: run.actor?.avatar_url
+    },
     created_at: run.created_at,
     updated_at: run.updated_at,
+    run_started_at: run.run_started_at || undefined,
+    jobs_url: run.jobs_url,
+    logs_url: run.logs_url,
+    check_suite_url: run.check_suite_url || undefined,
+    artifacts_url: run.artifacts_url,
+    cancel_url: run.cancel_url || undefined,
+    rerun_url: run.rerun_url || undefined,
+    workflow_url: run.workflow_url,
+    head_commit: run.head_commit
+      ? {
+          id: run.head_commit.id,
+          message: run.head_commit.message,
+          author: run.head_commit.author
+            ? {
+                name: run.head_commit.author.name,
+                email: run.head_commit.author.email
+              }
+            : null
+        }
+      : undefined,
+    repository: {
+      id: run.repository.id,
+      name: run.repository.name,
+      full_name: run.repository.full_name
+    },
     html_url: run.html_url
   }));
+}
+
+export async function listWorkflowDefinitions(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<GitHubWorkflow[]> {
+  const octokit = createGitHubClient(token);
+  const response = await octokit.actions.listRepoWorkflows({
+    owner,
+    repo
+  });
+
+  return response.data.workflows.map((workflow) => ({
+    id: workflow.id,
+    node_id: workflow.node_id,
+    name: workflow.name,
+    path: workflow.path,
+    state: workflow.state as
+      | "active"
+      | "deleted"
+      | "disabled_fork"
+      | "disabled_inactivity"
+      | "disabled_manually",
+    created_at: workflow.created_at,
+    updated_at: workflow.updated_at,
+    url: workflow.url,
+    html_url: workflow.html_url,
+    badge_url: workflow.badge_url
+  }));
+}
+
+export async function getWorkflowDefinition(
+  token: string,
+  owner: string,
+  repo: string,
+  workflowId: number | string
+): Promise<GitHubWorkflow> {
+  const octokit = createGitHubClient(token);
+  const workflowIdNum =
+    typeof workflowId === "string" ? parseInt(workflowId, 10) : workflowId;
+
+  console.log("owner", owner);
+  console.log("repo", repo);
+  console.log("workflowId", workflowId);
+  console.log("workflowIdNum", workflowIdNum);
+
+  const response = await octokit.actions.getWorkflow({
+    owner,
+    repo,
+    workflow_id: workflowIdNum
+  });
+
+  return {
+    id: response.data.id,
+    node_id: response.data.node_id,
+    name: response.data.name,
+    path: response.data.path,
+    state: response.data.state as
+      | "active"
+      | "deleted"
+      | "disabled_fork"
+      | "disabled_inactivity"
+      | "disabled_manually",
+    created_at: response.data.created_at,
+    updated_at: response.data.updated_at,
+    url: response.data.url,
+    html_url: response.data.html_url,
+    badge_url: response.data.badge_url
+  };
+}
+
+export async function getWorkflowFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string
+): Promise<{ content: string; inputs?: GitHubWorkflowInput[] }> {
+  const octokit = createGitHubClient(token);
+
+  try {
+    const response = await octokit.repos.getContent({
+      owner,
+      repo,
+      path
+    });
+
+    if ("content" in response.data && response.data.encoding === "base64") {
+      const content = Buffer.from(response.data.content, "base64").toString(
+        "utf-8"
+      );
+
+      // Parse YAML to extract workflow_dispatch inputs
+      try {
+        const workflowYaml = yaml.load(content) as any;
+        const inputs: GitHubWorkflowInput[] = [];
+
+        if (workflowYaml?.on?.workflow_dispatch?.inputs) {
+          const workflowInputs = workflowYaml.on.workflow_dispatch.inputs;
+
+          for (const [name, inputDef] of Object.entries(
+            workflowInputs as Record<string, any>
+          )) {
+            const input: GitHubWorkflowInput = {
+              name,
+              description: inputDef.description,
+              required: inputDef.required || false,
+              default: inputDef.default,
+              type: "string" // Default type
+            };
+
+            // Determine type based on input definition
+            if (inputDef.type) {
+              input.type = inputDef.type;
+            } else if (inputDef.options) {
+              input.type = "choice";
+              input.options = inputDef.options;
+            } else if (typeof inputDef.default === "boolean") {
+              input.type = "boolean";
+            }
+
+            inputs.push(input);
+          }
+        }
+
+        return { content, inputs };
+      } catch (parseError) {
+        // If YAML parsing fails, return content without inputs
+        console.error("Failed to parse workflow YAML:", parseError);
+        return { content };
+      }
+    }
+
+    throw new Error("Workflow file content not found or invalid encoding");
+  } catch (error: any) {
+    if (error.status === 404) {
+      throw new Error(`Workflow file not found: ${path}`);
+    }
+    throw error;
+  }
+}
+
+export async function dispatchWorkflow(
+  token: string,
+  owner: string,
+  repo: string,
+  workflowId: number | string,
+  ref: string,
+  inputs?: Record<string, string>
+): Promise<void> {
+  const octokit = createGitHubClient(token);
+  const workflowIdNum =
+    typeof workflowId === "string" ? parseInt(workflowId, 10) : workflowId;
+
+  await octokit.actions.createWorkflowDispatch({
+    owner,
+    repo,
+    workflow_id: workflowIdNum,
+    ref,
+    inputs: inputs || {}
+  });
+}
+
+export async function getWorkflowRun(
+  token: string,
+  owner: string,
+  repo: string,
+  runId: number
+): Promise<GitHubWorkflowRun> {
+  const octokit = createGitHubClient(token);
+  const response = await octokit.actions.getWorkflowRun({
+    owner,
+    repo,
+    run_id: runId
+  });
+
+  const run = response.data;
+  return {
+    id: run.id,
+    name: run.name || "",
+    display_title: run.display_title || undefined,
+    status: run.status as "queued" | "in_progress" | "completed",
+    conclusion: run.conclusion as
+      | "success"
+      | "failure"
+      | "neutral"
+      | "cancelled"
+      | "skipped"
+      | "timed_out"
+      | "action_required"
+      | null,
+    workflow_id: run.workflow_id,
+    head_branch: run.head_branch ?? null,
+    head_sha: run.head_sha,
+    run_number: run.run_number,
+    run_attempt: run.run_attempt,
+    event: run.event,
+    actor: {
+      login: run.actor?.login || "",
+      avatar_url: run.actor?.avatar_url
+    },
+    created_at: run.created_at,
+    updated_at: run.updated_at,
+    run_started_at: run.run_started_at || undefined,
+    jobs_url: run.jobs_url,
+    logs_url: run.logs_url,
+    check_suite_url: run.check_suite_url || undefined,
+    artifacts_url: run.artifacts_url,
+    cancel_url: run.cancel_url || undefined,
+    rerun_url: run.rerun_url || undefined,
+    workflow_url: run.workflow_url,
+    head_commit: run.head_commit
+      ? {
+          id: run.head_commit.id,
+          message: run.head_commit.message,
+          author: run.head_commit.author
+            ? {
+                name: run.head_commit.author.name,
+                email: run.head_commit.author.email
+              }
+            : null
+        }
+      : undefined,
+    repository: {
+      id: run.repository.id,
+      name: run.repository.name,
+      full_name: run.repository.full_name
+    },
+    html_url: run.html_url
+  };
 }
 
 export async function listBranches(token: string, owner: string, repo: string) {

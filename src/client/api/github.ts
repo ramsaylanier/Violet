@@ -8,7 +8,10 @@ import type {
   GitHubIssue,
   GitHubIssueComment,
   GitHubProject,
-  GitHubProjectItem
+  GitHubProjectItem,
+  GitHubWorkflow,
+  GitHubWorkflowInput,
+  GitHubWorkflowRun
 } from "@/shared/types";
 
 export async function createGitHubRepository(data: {
@@ -41,12 +44,84 @@ export async function listGitHubIssues(
   );
 }
 
-export async function listGitHubWorkflows(
+export async function listGitHubWorkflowDefinitions(
   owner: string,
   repo: string
-): Promise<any[]> {
-  return apiGet<any[]>(
+): Promise<GitHubWorkflow[]> {
+  return apiGet<GitHubWorkflow[]>(
     `/github/workflows?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
+  );
+}
+
+export async function getGitHubWorkflowDefinition(
+  owner: string,
+  repo: string,
+  workflowId: string
+): Promise<GitHubWorkflow & { inputs?: GitHubWorkflowInput[] }> {
+  return apiGet<GitHubWorkflow & { inputs?: GitHubWorkflowInput[] }>(
+    `/github/workflows/${encodeURIComponent(workflowId)}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
+  );
+}
+
+export async function dispatchGitHubWorkflow(
+  owner: string,
+  repo: string,
+  workflowId: string,
+  data: {
+    ref: string;
+    inputs?: Record<string, string>;
+  }
+): Promise<{ success: boolean }> {
+  return apiPost<{ success: boolean }>(
+    `/github/workflows/${encodeURIComponent(workflowId)}/dispatch`,
+    {
+      owner,
+      repo,
+      ...data
+    }
+  );
+}
+
+export async function listGitHubWorkflowRuns(
+  owner: string,
+  repo: string,
+  options?: {
+    workflowId?: string;
+    branch?: string;
+    status?: string;
+    per_page?: number;
+  }
+): Promise<GitHubWorkflowRun[]> {
+  const params = new URLSearchParams({
+    owner: owner,
+    repo: repo
+  });
+
+  if (options?.workflowId) {
+    params.append("workflowId", options.workflowId);
+  }
+  if (options?.branch) {
+    params.append("branch", options.branch);
+  }
+  if (options?.status) {
+    params.append("status", options.status);
+  }
+  if (options?.per_page) {
+    params.append("per_page", options.per_page.toString());
+  }
+
+  return apiGet<GitHubWorkflowRun[]>(
+    `/github/workflows/runs?${params.toString()}`
+  );
+}
+
+export async function getGitHubWorkflowRun(
+  owner: string,
+  repo: string,
+  runId: number
+): Promise<GitHubWorkflowRun> {
+  return apiGet<GitHubWorkflowRun>(
+    `/github/workflows/runs/${runId}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
   );
 }
 

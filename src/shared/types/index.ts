@@ -210,6 +210,70 @@ export interface GitHubProjectItem {
   updatedAt?: string;
 }
 
+export interface GitHubWorkflow {
+  id: number;
+  node_id: string;
+  name: string;
+  path: string;
+  state: "active" | "deleted" | "disabled_fork" | "disabled_inactivity" | "disabled_manually";
+  created_at: string;
+  updated_at: string;
+  url: string;
+  html_url: string;
+  badge_url: string;
+}
+
+export interface GitHubWorkflowInput {
+  name: string;
+  description?: string;
+  required: boolean;
+  default?: string;
+  type: "string" | "choice" | "boolean" | "environment";
+  options?: string[]; // For choice type
+}
+
+export interface GitHubWorkflowRun {
+  id: number;
+  name: string;
+  display_title?: string;
+  status: "queued" | "in_progress" | "completed";
+  conclusion: "success" | "failure" | "neutral" | "cancelled" | "skipped" | "timed_out" | "action_required" | null;
+  workflow_id: number;
+  head_branch: string | null;
+  head_sha: string;
+  run_number: number;
+  run_attempt?: number;
+  event: string;
+  actor: {
+    login: string;
+    avatar_url?: string;
+  };
+  created_at: string;
+  updated_at: string;
+  run_started_at?: string;
+  jobs_url: string;
+  logs_url: string;
+  check_suite_url?: string;
+  artifacts_url: string;
+  cancel_url?: string;
+  rerun_url?: string;
+  workflow_url: string;
+  head_commit?: {
+    id: string;
+    message: string;
+    author: {
+      name: string;
+      email: string;
+    } | null;
+  };
+  repository: {
+    id: number;
+    name: string;
+    full_name: string;
+  };
+  html_url?: string;
+}
+
 export interface CloudflareZone {
   id: string;
   name: string;

@@ -21,6 +21,8 @@ import {
 import { useState } from "react";
 import { Dialog } from "@/client/components/ui/dialog";
 import { DeployDialog } from "@/client/components/deployment/DeployDialog";
+import { ProjectWorkflows } from "@/client/components/project/ProjectWorkflows";
+import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 
 export const Route = createFileRoute(
   "/_app/projects/$projectId/deployments/$deploymentId"
@@ -33,6 +35,7 @@ function DeploymentView() {
   const { projectId, deploymentId } = Route.useParams();
   const { project, loading, error } = useProjectContext();
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const { user } = useCurrentUser();
 
   if (loading) {
     return (
@@ -303,6 +306,28 @@ function DeploymentView() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Workflows Section */}
+      {deployment.repository && user?.githubToken && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Github className="w-5 h-5" />
+              GitHub Actions Workflows
+            </CardTitle>
+            <CardDescription>
+              View and manage GitHub Actions workflows for this repository
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectWorkflows
+              owner={deployment.repository.owner}
+              repo={deployment.repository.name}
+              repoUrl={deployment.repository.url}
+            />
           </CardContent>
         </Card>
       )}

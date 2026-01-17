@@ -34,14 +34,6 @@ export type UpdateProjectInput = Partial<Project> & {
     fullName: string;
     url: string;
   }>;
-  domains?: Array<{
-    zoneId?: string;
-    zoneName: string;
-    provider: "cloudflare" | "firebase";
-    linkedAt: Date | string;
-    siteId?: string;
-    status?: string;
-  }>;
   hosting?: Array<{
     id: string;
     provider: "cloudflare-pages" | "firebase-hosting";
