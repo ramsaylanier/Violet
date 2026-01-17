@@ -118,12 +118,6 @@ function ProjectLayoutContent() {
       route: "/projects/$projectId/domains"
     },
     {
-      id: "hosting",
-      label: "Hosting",
-      path: `/projects/${projectId}/hosting`,
-      route: "/projects/$projectId/hosting"
-    },
-    {
       id: "integrations",
       label: "Integrations",
       path: `/projects/${projectId}/integrations`,

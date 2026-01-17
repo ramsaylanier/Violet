@@ -9,8 +9,7 @@ import {
   Globe,
   CheckCircle2,
   XCircle,
-  AlertCircle,
-  Plus
+  AlertCircle
 } from "lucide-react";
 import {
   DialogContent,
@@ -85,8 +84,9 @@ export function DeployDialog({
   );
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deploymentStatus, setDeploymentStatus] =
-    useState<Awaited<ReturnType<typeof deployDeployment>> | null>(null);
+  const [deploymentStatus, setDeploymentStatus] = useState<Awaited<
+    ReturnType<typeof deployDeployment>
+  > | null>(null);
 
   // Hosting creation state
   const [selectedHostingProvider, setSelectedHostingProvider] = useState<
@@ -162,11 +162,12 @@ export function DeployDialog({
     });
 
   // Fetch Firebase hosting sites
-  const { data: firebaseSites = [], isLoading: loadingFirebaseSites } = useQuery(
-    {
+  const { data: firebaseSites = [], isLoading: loadingFirebaseSites } =
+    useQuery({
       queryKey: ["firebase-hosting-sites", project.firebaseProjectId],
       queryFn: () => {
-        if (!project.firebaseProjectId) throw new Error("Firebase project ID required");
+        if (!project.firebaseProjectId)
+          throw new Error("Firebase project ID required");
         return listFirebaseHostingSites(project.firebaseProjectId);
       },
       enabled:
@@ -175,8 +176,7 @@ export function DeployDialog({
         (step === "add-hosting" || step === "providers") &&
         selectedHostingProvider === "firebase-hosting" &&
         hasFirebaseProject
-    }
-  );
+    });
 
   // Create Cloudflare Pages project mutation
   const createPagesProjectMutation = useMutation({
@@ -247,7 +247,10 @@ export function DeployDialog({
   // Poll deployment status
   useEffect(() => {
     if (step === "progress" && deploymentStatus && !deploymentStatus.error) {
-      if (deploymentStatus.step === "success" || deploymentStatus.step === "error") {
+      if (
+        deploymentStatus.step === "success" ||
+        deploymentStatus.step === "error"
+      ) {
         return; // Stop polling when done
       }
 
@@ -796,7 +799,10 @@ export function DeployDialog({
                             </SelectTrigger>
                             <SelectContent>
                               {firebaseSites.map((site) => (
-                                <SelectItem key={site.siteId} value={site.siteId}>
+                                <SelectItem
+                                  key={site.siteId}
+                                  value={site.siteId}
+                                >
                                   {site.siteId}
                                 </SelectItem>
                               ))}

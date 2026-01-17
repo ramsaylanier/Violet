@@ -8,14 +8,14 @@ export interface Deployment {
     fullName: string;
     url: string;
   };
-  domains?: Array<{
+  domain?: {
     zoneId?: string;
     zoneName: string;
     provider: "cloudflare" | "firebase";
     linkedAt: Date;
     siteId?: string; // For Firebase domains
     status?: string; // For Firebase domain status
-  }>;
+  };
   hosting?: Hosting[];
   createdAt: Date;
   updatedAt: Date;

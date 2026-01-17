@@ -207,3 +207,22 @@ export async function getFirebaseDomainDNSRecords(
     `/firebase/sites/${encodeURIComponent(siteId)}/domains/${encodeURIComponent(domain)}/dns-records?projectId=${encodeURIComponent(projectId)}`
   );
 }
+
+/**
+ * Get status of Firebase services for a project
+ */
+export interface FirebaseServiceStatus {
+  firestore: boolean;
+  storage: boolean;
+  hosting: boolean;
+  authentication: boolean;
+  functions: boolean;
+}
+
+export async function getFirebaseServicesStatus(
+  projectId: string
+): Promise<FirebaseServiceStatus> {
+  return apiGet<FirebaseServiceStatus>(
+    `/firebase/projects/${encodeURIComponent(projectId)}/services`
+  );
+}
