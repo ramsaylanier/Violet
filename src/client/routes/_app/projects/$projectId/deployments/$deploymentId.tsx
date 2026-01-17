@@ -137,11 +137,10 @@ function DeploymentView() {
               {deployment.repository.fullName}
             </Badge>
           )}
-          {deployment.domains && deployment.domains.length > 0 && (
+          {deployment.domain && (
             <Badge variant="secondary" className="gap-1">
               <Globe className="w-3 h-3" />
-              {deployment.domains.length} domain
-              {deployment.domains.length !== 1 ? "s" : ""}
+              Domain
             </Badge>
           )}
           {deployment.hosting && deployment.hosting.length > 0 && (
@@ -212,10 +211,10 @@ function DeploymentView() {
                 {new Date(deployment.updatedAt).toLocaleDateString()}
               </div>
             </div>
-            {deployment.domains && deployment.domains.length > 0 && (
+            {deployment.domain && (
               <div>
-                <div className="text-sm text-muted-foreground">Domains</div>
-                <div className="font-medium">{deployment.domains.length}</div>
+                <div className="text-sm text-muted-foreground">Domain</div>
+                <div className="font-medium">{deployment.domain.zoneName}</div>
               </div>
             )}
             {deployment.hosting && deployment.hosting.length > 0 && (
@@ -228,41 +227,34 @@ function DeploymentView() {
         </Card>
       </div>
 
-      {/* Domains Section */}
-      {deployment.domains && deployment.domains.length > 0 && (
+      {/* Domain Section */}
+      {deployment.domain && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              Domains ({deployment.domains.length})
+              Domain
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {deployment.domains.map((domain, index) => (
-                <div
-                  key={domain.zoneId || `domain-${index}`}
-                  className="flex items-center justify-between p-3 border rounded-md"
-                >
-                  <div>
-                    <div className="font-medium">{domain.zoneName}</div>
-                    <div className="text-sm text-muted-foreground capitalize">
-                      {domain.provider}
-                      {domain.status && ` • ${domain.status}`}
-                    </div>
-                  </div>
-                  {domain.zoneId && (
-                    <a
-                      href={`https://dash.cloudflare.com/${domain.zoneId}/dns`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
+            <div className="flex items-center justify-between p-3 border rounded-md">
+              <div>
+                <div className="font-medium">{deployment.domain.zoneName}</div>
+                <div className="text-sm text-muted-foreground capitalize">
+                  {deployment.domain.provider}
+                  {deployment.domain.status && ` • ${deployment.domain.status}`}
                 </div>
-              ))}
+              </div>
+              {deployment.domain.zoneId && (
+                <a
+                  href={`https://dash.cloudflare.com/${deployment.domain.zoneId}/dns`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -334,7 +326,7 @@ function DeploymentView() {
 
       {/* Empty States */}
       {!deployment.repository &&
-        (!deployment.domains || deployment.domains.length === 0) &&
+        !deployment.domain &&
         (!deployment.hosting || deployment.hosting.length === 0) && (
           <Card>
             <CardContent className="py-12">

@@ -5,12 +5,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { tmpdir } from "os";
-import type {
-  Deployment,
-  DeploymentStatus,
-  Hosting,
-  FirebaseHostingDeployment
-} from "@/shared/types";
+import type { Deployment, DeploymentStatus, Hosting } from "@/shared/types";
 import {
   downloadGitHubTarball,
   extractTarball,
@@ -68,7 +63,7 @@ async function downloadAndBuildRepository(
 async function deployToHostingProvider(
   userId: string,
   hosting: Hosting,
-  buildDir: string,
+  buildDir: string | null,
   project: { firebaseProjectId?: string | null }
 ): Promise<{
   providerId: string;
@@ -86,6 +81,14 @@ async function deployToHostingProvider(
       // Extract siteId from hosting name or use a default
       // The hosting.name should be the siteId for Firebase
       const siteId = hosting.name;
+
+      if (!project.firebaseProjectId || !buildDir) {
+        throw new Error(
+          !project.firebaseProjectId
+            ? "Firebase project ID not configured"
+            : "Build directory not available"
+        );
+      }
 
       const deployment = await deployToFirebaseHosting(
         userId,
@@ -120,8 +123,7 @@ async function deployToHostingProvider(
       const deployment = await deployToCloudflarePages(
         cloudflareToken,
         accountId,
-        hosting.name,
-        buildDir
+        hosting.name
       );
 
       return {

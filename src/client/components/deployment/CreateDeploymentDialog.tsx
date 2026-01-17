@@ -235,7 +235,7 @@ export function CreateDeploymentDialog({
       name: deploymentName.trim(),
       description: deploymentDescription.trim() || undefined,
       repository: repoInfo || undefined,
-      domains: [],
+      domain: undefined,
       hosting: [],
       createdAt: new Date(),
       updatedAt: new Date()

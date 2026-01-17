@@ -13,7 +13,8 @@ import {
   createFirestoreCollection,
   verifyFirebaseProject,
   listFirebaseProjects,
-  getFirebaseProjectMetadata
+  getFirebaseProjectMetadata,
+  getFirebaseServicesStatus
 } from "@/server/services/firebaseService";
 
 import {
@@ -162,6 +163,37 @@ router.get("/projects/:projectId", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error getting Firebase project:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/firebase/projects/:projectId/services
+ * Get status of Firebase services for a project
+ */
+router.get("/projects/:projectId/services", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { projectId } = req.params;
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    const services = await getFirebaseServicesStatus(userId, projectId);
+    res.json(services);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting Firebase services:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error"
     });

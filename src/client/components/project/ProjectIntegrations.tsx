@@ -9,7 +9,14 @@ import {
   ExternalLink,
   ChevronsUpDown,
   Check,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Database,
+  HardDrive,
+  Globe,
+  Shield,
+  Zap,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import {
   Card,
@@ -63,7 +70,8 @@ import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import {
   verifyFirebaseProject,
   listFirebaseProjects,
-  initiateGoogleOAuth
+  initiateGoogleOAuth,
+  getFirebaseServicesStatus
 } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 
@@ -88,6 +96,21 @@ export function ProjectIntegrations({
 
   const hasFirebaseProject = !!project.firebaseProjectId;
   const isGoogleConnected = !!user?.googleToken;
+
+  // Fetch Firebase services status
+  const {
+    data: servicesStatus,
+    isLoading: loadingServices,
+    error: servicesError
+  } = useQuery({
+    queryKey: ["firebase-services", project.firebaseProjectId],
+    queryFn: () =>
+      project.firebaseProjectId
+        ? getFirebaseServicesStatus(project.firebaseProjectId)
+        : null,
+    enabled: !!project.firebaseProjectId && isGoogleConnected,
+    retry: 1
+  });
 
   // Fetch Firebase projects using useQuery
   const {
@@ -498,6 +521,84 @@ export function ProjectIntegrations({
                   </a>
                 </div>
               </div>
+
+              {/* Firebase Services Status */}
+              {isGoogleConnected && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Active Services
+                  </div>
+                  {loadingServices ? (
+                    <div className="flex items-center gap-2 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">
+                        Loading services...
+                      </span>
+                    </div>
+                  ) : servicesError ? (
+                    <div className="text-sm text-muted-foreground py-2">
+                      Unable to load service status
+                    </div>
+                  ) : servicesStatus ? (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {[
+                        {
+                          key: "firestore",
+                          label: "Firestore",
+                          icon: Database,
+                          enabled: servicesStatus.firestore
+                        },
+                        {
+                          key: "storage",
+                          label: "Storage",
+                          icon: HardDrive,
+                          enabled: servicesStatus.storage
+                        },
+                        {
+                          key: "hosting",
+                          label: "Hosting",
+                          icon: Globe,
+                          enabled: servicesStatus.hosting
+                        },
+                        {
+                          key: "authentication",
+                          label: "Authentication",
+                          icon: Shield,
+                          enabled: servicesStatus.authentication
+                        },
+                        {
+                          key: "functions",
+                          label: "Functions",
+                          icon: Zap,
+                          enabled: servicesStatus.functions
+                        }
+                      ].map((service) => {
+                        const Icon = service.icon;
+                        return (
+                          <div
+                            key={service.key}
+                            className="flex items-center gap-2 p-2 rounded-md border bg-card"
+                          >
+                            <Icon className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm font-medium flex-1">
+                              {service.label}
+                            </span>
+                            {service.enabled ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground py-2">
+                      No service information available
+                    </div>
+                  )}
+                </div>
+              )}
 
               <AlertDialog
                 open={removeDialogOpen}

@@ -210,3 +210,133 @@ export async function listFirebaseProjects(
     throw error;
   }
 }
+
+/**
+ * Check which Firebase services are active for a project
+ * Requires Google OAuth token with Firebase Management API access
+ */
+export interface FirebaseServiceStatus {
+  firestore: boolean;
+  storage: boolean;
+  hosting: boolean;
+  authentication: boolean;
+  functions: boolean;
+}
+
+export async function getFirebaseServicesStatus(
+  userId: string,
+  projectId: string
+): Promise<FirebaseServiceStatus> {
+  const status: FirebaseServiceStatus = {
+    firestore: false,
+    storage: false,
+    hosting: false,
+    authentication: false,
+    functions: false
+  };
+
+  try {
+    // Get project metadata which includes resources
+    const response = await fetchWithTokenRefresh(
+      userId,
+      `https://firebase.googleapis.com/v1beta1/projects/${projectId}`,
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (response.ok) {
+      const projectData = await response.json();
+      const resources = projectData.resources || {};
+
+      console.log(projectData);
+
+      // Check Storage - if storageBucket exists in resources
+      if (resources.storageBucket) {
+        status.storage = true;
+      }
+
+      // Check Firestore - if locationId exists (Firestore databases have locations)
+      // The locationId indicates Firestore is configured
+      if (resources.locationId) {
+        status.firestore = true;
+      } else {
+        // Try to list Firestore databases as an additional check
+        try {
+          const firestoreResponse = await fetchWithTokenRefresh(
+            userId,
+            `https://firestore.googleapis.com/v1/projects/${projectId}/databases`,
+            {
+              headers: {
+                "Content-Type": "application/json"
+              }
+            }
+          );
+
+          if (firestoreResponse.ok) {
+            const firestoreData = await firestoreResponse.json();
+            status.firestore =
+              (firestoreData.databases || []).length > 0 ||
+              !!resources.locationId;
+          }
+        } catch {
+          // Firestore API might not be accessible, use locationId as indicator
+          status.firestore = !!resources.locationId;
+        }
+      }
+
+      // Check Hosting - try to list hosting sites
+      try {
+        const hostingResponse = await fetchWithTokenRefresh(
+          userId,
+          `https://firebasehosting.googleapis.com/v1beta1/projects/${projectId}/sites`,
+          {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        if (hostingResponse.ok) {
+          const hostingData = await hostingResponse.json();
+          status.hosting = (hostingData.sites || []).length > 0;
+        }
+      } catch {
+        // Hosting might not be enabled
+        status.hosting = false;
+      }
+
+      // Authentication is always enabled for Firebase projects
+      status.authentication = true;
+
+      // Check Functions - try to list Cloud Functions
+      // Note: This requires Cloud Functions API, which may have different auth requirements
+      try {
+        const functionsResponse = await fetchWithTokenRefresh(
+          userId,
+          `https://cloudfunctions.googleapis.com/v1/projects/${projectId}/locations/-/functions`,
+          {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        if (functionsResponse.ok) {
+          const functionsData = await functionsResponse.json();
+          status.functions = (functionsData.functions || []).length > 0;
+        }
+      } catch {
+        // Functions might not be enabled or API not accessible
+        status.functions = false;
+      }
+    }
+  } catch (error) {
+    // If we can't fetch project metadata, services status will remain false
+    console.error("Error checking Firebase services:", error);
+  }
+
+  return status;
+}
