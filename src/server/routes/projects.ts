@@ -43,16 +43,16 @@ router.get("/", async (req, res) => {
                 (deployment.updatedAt instanceof Date
                   ? deployment.updatedAt
                   : new Date(deployment.updatedAt)),
-              domains: deployment.domains
-                ? deployment.domains.map((domain: any) => ({
-                    ...domain,
+              domain: deployment.domain
+                ? {
+                    ...deployment.domain,
                     linkedAt:
-                      domain.linkedAt?.toDate?.() ||
-                      (domain.linkedAt instanceof Date
-                        ? domain.linkedAt
-                        : new Date(domain.linkedAt))
-                  }))
-                : [],
+                      deployment.domain.linkedAt?.toDate?.() ||
+                      (deployment.domain.linkedAt instanceof Date
+                        ? deployment.domain.linkedAt
+                        : new Date(deployment.domain.linkedAt))
+                  }
+                : undefined,
               hosting: deployment.hosting
                 ? deployment.hosting.map((hosting: any) => ({
                     ...hosting,
@@ -273,14 +273,14 @@ router.put("/:id", async (req, res) => {
           fullName: string;
           url: string;
         };
-        domains?: Array<{
+        domain?: {
           zoneId?: string;
           zoneName: string;
           provider: "cloudflare" | "firebase";
           linkedAt: Date | string;
           siteId?: string;
           status?: string;
-        }>;
+        };
         hosting?: Array<{
           id: string;
           provider: "cloudflare-pages" | "firebase-hosting";
@@ -299,12 +299,14 @@ router.put("/:id", async (req, res) => {
         url: string;
       }>;
       firebaseProjectId?: string | null;
-      domains?: Array<{
-        zoneId: string;
+      domain?: {
+        zoneId?: string;
         zoneName: string;
-        provider: "cloudflare";
+        provider: "cloudflare" | "firebase";
         linkedAt: Date | string;
-      }>;
+        siteId?: string;
+        status?: string;
+      } | null;
       hosting?: Array<{
         id: string;
         provider: "cloudflare-pages" | "firebase-hosting";
@@ -396,19 +398,19 @@ router.put("/:id", async (req, res) => {
         updateData.firebaseProjectId = updates.firebaseProjectId;
       }
     }
-    if (updates.domains !== undefined) {
+    if (updates.domain !== undefined) {
       // Convert Date objects to Firestore Timestamps
       const { FieldValue } = await import("firebase-admin/firestore");
-      if (updates.domains.length === 0) {
-        updateData.domains = FieldValue.delete();
+      if (!updates.domain) {
+        updateData.domain = FieldValue.delete();
       } else {
-        updateData.domains = updates.domains.map((domain) => ({
-          ...domain,
+        updateData.domain = {
+          ...updates.domain,
           linkedAt:
-            domain.linkedAt instanceof Date
-              ? domain.linkedAt
-              : new Date(domain.linkedAt)
-        }));
+            updates.domain.linkedAt instanceof Date
+              ? updates.domain.linkedAt
+              : new Date(updates.domain.linkedAt)
+        };
       }
     }
     if (updates.hosting !== undefined) {

@@ -637,8 +637,7 @@ export async function deletePagesProject(
 export async function deployToCloudflarePages(
   token: string,
   accountId: string,
-  projectName: string,
-  buildDir: string
+  projectName: string
 ): Promise<CloudflarePagesDeployment> {
   // For now, we'll return a deployment object indicating the deployment was initiated
   // In a full implementation, you would:
@@ -646,7 +645,7 @@ export async function deployToCloudflarePages(
   // 2. Upload it to Cloudflare Pages using their direct upload API
   // 3. Wait for the deployment to complete
   // 4. Return the actual deployment details
-  
+
   // This is a placeholder that indicates deployment was initiated
   // The actual Cloudflare Pages API integration would go here
   return {

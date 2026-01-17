@@ -21,6 +21,8 @@ import {
 import { useState } from "react";
 import { Dialog } from "@/client/components/ui/dialog";
 import { DeployDialog } from "@/client/components/deployment/DeployDialog";
+import { ProjectWorkflows } from "@/client/components/project/ProjectWorkflows";
+import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 
 export const Route = createFileRoute(
   "/_app/projects/$projectId/deployments/$deploymentId"
@@ -33,6 +35,7 @@ function DeploymentView() {
   const { projectId, deploymentId } = Route.useParams();
   const { project, loading, error } = useProjectContext();
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const { user } = useCurrentUser();
 
   if (loading) {
     return (
@@ -134,11 +137,10 @@ function DeploymentView() {
               {deployment.repository.fullName}
             </Badge>
           )}
-          {deployment.domains && deployment.domains.length > 0 && (
+          {deployment.domain && (
             <Badge variant="secondary" className="gap-1">
               <Globe className="w-3 h-3" />
-              {deployment.domains.length} domain
-              {deployment.domains.length !== 1 ? "s" : ""}
+              Domain
             </Badge>
           )}
           {deployment.hosting && deployment.hosting.length > 0 && (
@@ -209,10 +211,10 @@ function DeploymentView() {
                 {new Date(deployment.updatedAt).toLocaleDateString()}
               </div>
             </div>
-            {deployment.domains && deployment.domains.length > 0 && (
+            {deployment.domain && (
               <div>
-                <div className="text-sm text-muted-foreground">Domains</div>
-                <div className="font-medium">{deployment.domains.length}</div>
+                <div className="text-sm text-muted-foreground">Domain</div>
+                <div className="font-medium">{deployment.domain.zoneName}</div>
               </div>
             )}
             {deployment.hosting && deployment.hosting.length > 0 && (
@@ -225,41 +227,34 @@ function DeploymentView() {
         </Card>
       </div>
 
-      {/* Domains Section */}
-      {deployment.domains && deployment.domains.length > 0 && (
+      {/* Domain Section */}
+      {deployment.domain && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              Domains ({deployment.domains.length})
+              Domain
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {deployment.domains.map((domain, index) => (
-                <div
-                  key={domain.zoneId || `domain-${index}`}
-                  className="flex items-center justify-between p-3 border rounded-md"
-                >
-                  <div>
-                    <div className="font-medium">{domain.zoneName}</div>
-                    <div className="text-sm text-muted-foreground capitalize">
-                      {domain.provider}
-                      {domain.status && ` • ${domain.status}`}
-                    </div>
-                  </div>
-                  {domain.zoneId && (
-                    <a
-                      href={`https://dash.cloudflare.com/${domain.zoneId}/dns`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
+            <div className="flex items-center justify-between p-3 border rounded-md">
+              <div>
+                <div className="font-medium">{deployment.domain.zoneName}</div>
+                <div className="text-sm text-muted-foreground capitalize">
+                  {deployment.domain.provider}
+                  {deployment.domain.status && ` • ${deployment.domain.status}`}
                 </div>
-              ))}
+              </div>
+              {deployment.domain.zoneId && (
+                <a
+                  href={`https://dash.cloudflare.com/${deployment.domain.zoneId}/dns`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -307,9 +302,31 @@ function DeploymentView() {
         </Card>
       )}
 
+      {/* Workflows Section */}
+      {deployment.repository && user?.githubToken && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Github className="w-5 h-5" />
+              GitHub Actions Workflows
+            </CardTitle>
+            <CardDescription>
+              View and manage GitHub Actions workflows for this repository
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectWorkflows
+              owner={deployment.repository.owner}
+              repo={deployment.repository.name}
+              repoUrl={deployment.repository.url}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Empty States */}
       {!deployment.repository &&
-        (!deployment.domains || deployment.domains.length === 0) &&
+        !deployment.domain &&
         (!deployment.hosting || deployment.hosting.length === 0) && (
           <Card>
             <CardContent className="py-12">

@@ -6,7 +6,7 @@ import express from "express";
 import { adminDb } from "@/server/lib/firebase-admin";
 import { getRequireAuth } from "./auth.js";
 import { deployDeployment } from "@/server/services/deploymentService";
-import type { Deployment, Project } from "@/shared/types";
+import type { Project } from "@/shared/types";
 
 const router = express.Router();
 

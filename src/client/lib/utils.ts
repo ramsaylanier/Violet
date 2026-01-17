@@ -28,7 +28,7 @@ export function getProjectRepositories(project: Project): Array<{
 }
 
 /**
- * Extract all domains from project deployments (legacy support)
+ * Extract all domains from project deployments
  */
 export function getProjectDomains(project: Project) {
   const deployments = project.deployments || [];
@@ -42,8 +42,8 @@ export function getProjectDomains(project: Project) {
   }> = [];
 
   for (const deployment of deployments) {
-    if (deployment.domains) {
-      domains.push(...deployment.domains);
+    if (deployment.domain) {
+      domains.push(deployment.domain);
     }
   }
 

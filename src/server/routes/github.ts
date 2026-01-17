@@ -27,7 +27,12 @@ import {
   listProjectItems,
   updateProjectItem,
   addProjectItem,
-  listWorkflows,
+  listWorkflowRuns,
+  listWorkflowDefinitions,
+  getWorkflowDefinition,
+  getWorkflowFile,
+  dispatchWorkflow,
+  getWorkflowRun,
   listBranches,
   createPullRequest
 } from "@/server/services/githubService";
@@ -849,7 +854,7 @@ router.get("/issues/aggregated", async (req, res) => {
 
 /**
  * GET /api/github/workflows
- * List GitHub workflows
+ * List GitHub workflow definitions
  */
 router.get("/workflows", async (req, res) => {
   try {
@@ -862,13 +867,212 @@ router.get("/workflows", async (req, res) => {
 
     const { owner, repo } = req.query as { owner: string; repo: string };
 
-    const workflows = await listWorkflows(user.githubToken, owner, repo);
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    const workflows = await listWorkflowDefinitions(
+      user.githubToken,
+      owner,
+      repo
+    );
     res.json(workflows);
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error listing GitHub workflows:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/github/workflows/runs
+ * List workflow runs (history)
+ * NOTE: This must come before /workflows/:workflowId to avoid route conflicts
+ */
+router.get("/workflows/runs", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { owner, repo, workflowId, branch, status } = req.query as {
+      owner: string;
+      repo: string;
+      workflowId?: string;
+      branch?: string;
+      status?: string;
+    };
+
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    const options: any = {};
+    if (workflowId) {
+      options.workflowId = parseInt(workflowId, 10);
+    }
+    if (branch) {
+      options.branch = branch;
+    }
+    if (status) {
+      options.status = status;
+    }
+
+    const runs = await listWorkflowRuns(user.githubToken, owner, repo, options);
+    res.json(runs);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error listing GitHub workflow runs:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/github/workflows/runs/:runId
+ * Get a specific workflow run
+ * NOTE: This must come before /workflows/:workflowId to avoid route conflicts
+ */
+router.get("/workflows/runs/:runId", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { runId } = req.params;
+    const { owner, repo } = req.query as { owner: string; repo: string };
+
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    const run = await getWorkflowRun(
+      user.githubToken,
+      owner,
+      repo,
+      parseInt(runId, 10)
+    );
+    res.json(run);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting GitHub workflow run:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * GET /api/github/workflows/:workflowId
+ * Get a specific workflow definition with inputs
+ */
+router.get("/workflows/:workflowId", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { workflowId } = req.params;
+    const { owner, repo } = req.query as { owner: string; repo: string };
+
+    if (!owner || !repo) {
+      return res.status(400).json({ error: "Owner and repo are required" });
+    }
+
+    const workflow = await getWorkflowDefinition(
+      user.githubToken,
+      owner,
+      repo,
+      workflowId
+    );
+
+    // Get workflow file to parse inputs
+    try {
+      const workflowFile = await getWorkflowFile(
+        user.githubToken,
+        owner,
+        repo,
+        workflow.path
+      );
+      res.json({
+        ...workflow,
+        inputs: workflowFile.inputs
+      });
+    } catch (fileError) {
+      // If file can't be read, return workflow without inputs
+      console.error("Error reading workflow file:", fileError);
+      res.json(workflow);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error getting GitHub workflow:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * POST /api/github/workflows/:workflowId/dispatch
+ * Trigger a workflow manually
+ */
+router.post("/workflows/:workflowId/dispatch", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const user = await getUserProfile(userId);
+
+    if (!user?.githubToken) {
+      return res.status(400).json({ error: "GitHub token not configured" });
+    }
+
+    const { workflowId } = req.params;
+    const { owner, repo, ref, inputs } = req.body as {
+      owner: string;
+      repo: string;
+      ref: string;
+      inputs?: Record<string, string>;
+    };
+
+    if (!owner || !repo || !ref) {
+      return res
+        .status(400)
+        .json({ error: "Owner, repo, and ref are required" });
+    }
+
+    await dispatchWorkflow(
+      user.githubToken,
+      owner,
+      repo,
+      workflowId,
+      ref,
+      inputs
+    );
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error dispatching GitHub workflow:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error"
     });

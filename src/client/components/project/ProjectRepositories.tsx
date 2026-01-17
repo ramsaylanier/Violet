@@ -78,6 +78,7 @@ import {
   CollapsibleTrigger
 } from "@/client/components/ui/collapsible";
 import { Badge } from "@/client/components/ui/badge";
+import { ProjectWorkflows } from "./ProjectWorkflows";
 
 interface ProjectRepositoriesProps {
   project: Project;
@@ -708,6 +709,17 @@ export function ProjectRepositories({
                       )}
                     </CollapsibleContent>
                   </Collapsible>
+                )}
+
+                {/* Workflows Section */}
+                {isGitHubConnected && (
+                  <div className="mt-4 pt-4 border-t">
+                    <ProjectWorkflows
+                      owner={repo.owner}
+                      repo={repo.name}
+                      repoUrl={repo.url}
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
