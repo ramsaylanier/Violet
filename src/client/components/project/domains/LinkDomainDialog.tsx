@@ -40,6 +40,7 @@ import {
   SelectValue
 } from "@/client/components/ui/select";
 import { Input } from "@/client/components/ui/input";
+import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import type { Project, Deployment } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
 import { listCloudflareZones } from "@/client/api/cloudflare";
@@ -146,59 +147,45 @@ export function LinkDomainDialog({
         throw new Error("Zone not found");
       }
 
-      if (deployments.length > 0) {
-        if (!deploymentId) {
-          throw new Error("Please select a deployment");
-        }
-
-        const selectedDeployment = deployments.find(
-          (d) => d.id === deploymentId
+      // Domains can only be added to deployments, not directly to projects
+      if (deployments.length === 0) {
+        throw new Error(
+          "No deployments found. Please create a deployment before linking a domain."
         );
-        if (!selectedDeployment) {
-          throw new Error("Selected deployment not found");
-        }
-
-        if (selectedDeployment.domain?.zoneId === zone.id) {
-          throw new Error("This domain is already linked to this deployment");
-        }
-
-        const newDomain = {
-          zoneId: zone.id,
-          zoneName: zone.name,
-          provider: "cloudflare" as const,
-          linkedAt: new Date()
-        };
-
-        const updatedDeployments = deployments.map((d) =>
-          d.id === deploymentId
-            ? {
-                ...d,
-                domain: newDomain,
-                updatedAt: new Date()
-              }
-            : d
-        );
-        return await updateProject(project.id, {
-          deployments: updatedDeployments
-        });
-      } else {
-        if (projectDomains.some((d) => d.zoneId === zone.id)) {
-          throw new Error("This domain is already linked to this project");
-        }
-
-        const updatedDomains = [
-          ...projectDomains,
-          {
-            zoneId: zone.id,
-            zoneName: zone.name,
-            provider: "cloudflare" as const,
-            linkedAt: new Date()
-          }
-        ];
-        return await updateProject(project.id, {
-          domains: updatedDomains
-        });
       }
+
+      if (!deploymentId) {
+        throw new Error("Please select a deployment");
+      }
+
+      const selectedDeployment = deployments.find((d) => d.id === deploymentId);
+      if (!selectedDeployment) {
+        throw new Error("Selected deployment not found");
+      }
+
+      if (selectedDeployment.domain?.zoneId === zone.id) {
+        throw new Error("This domain is already linked to this deployment");
+      }
+
+      const newDomain = {
+        zoneId: zone.id,
+        zoneName: zone.name,
+        provider: "cloudflare" as const,
+        linkedAt: new Date()
+      };
+
+      const updatedDeployments = deployments.map((d) =>
+        d.id === deploymentId
+          ? {
+              ...d,
+              domain: newDomain,
+              updatedAt: new Date()
+            }
+          : d
+      );
+      return await updateProject(project.id, {
+        deployments: updatedDeployments
+      });
     },
     onSuccess: (updatedProject) => {
       onUpdate(updatedProject);
@@ -215,16 +202,35 @@ export function LinkDomainDialog({
   const addFirebaseDomainMutation = useMutation({
     mutationFn: async ({
       siteId,
-      domainName
+      domainName,
+      deploymentId
     }: {
       siteId: string;
       domainName: string;
+      deploymentId?: string;
     }) => {
+      // Domains can only be added to deployments, not directly to projects
+      if (deployments.length === 0) {
+        throw new Error(
+          "No deployments found. Please create a deployment before linking a domain."
+        );
+      }
+
+      if (!deploymentId) {
+        throw new Error("Please select a deployment");
+      }
+
       const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i;
       if (!domainRegex.test(domainName.trim())) {
         throw new Error("Invalid domain format");
       }
 
+      const selectedDeployment = deployments.find((d) => d.id === deploymentId);
+      if (!selectedDeployment) {
+        throw new Error("Selected deployment not found");
+      }
+
+      // Check if domain is already linked to any deployment
       if (
         projectDomains.some(
           (d) => d.provider === "firebase" && d.zoneName === domainName.trim()
@@ -243,19 +249,27 @@ export function LinkDomainDialog({
         domainName.trim()
       );
 
-      const updatedDomains = [
-        ...projectDomains,
-        {
-          zoneName: result.domain,
-          provider: "firebase" as const,
-          linkedAt: new Date(),
-          siteId,
-          status: result.status
-        }
-      ];
+      // Store Firebase domain on the selected deployment (same as Cloudflare domains)
+      const newDomain = {
+        zoneName: result.domain,
+        provider: "firebase" as const,
+        linkedAt: new Date(),
+        siteId,
+        status: result.status
+      };
+
+      const updatedDeployments = deployments.map((d) =>
+        d.id === deploymentId
+          ? {
+              ...d,
+              domain: newDomain,
+              updatedAt: new Date()
+            }
+          : d
+      );
 
       return await updateProject(project.id, {
-        domains: updatedDomains
+        deployments: updatedDeployments
       });
     },
     onSuccess: (updatedProject) => {
@@ -298,10 +312,15 @@ export function LinkDomainDialog({
 
   const handleAddFirebaseDomain = () => {
     if (!selectedSiteId || !firebaseDomainName.trim()) return;
+    if (!selectedDeploymentId && deployments.length > 0) {
+      setError("Please select a deployment");
+      return;
+    }
     setError(null);
     addFirebaseDomainMutation.mutate({
       siteId: selectedSiteId,
-      domainName: firebaseDomainName
+      domainName: firebaseDomainName,
+      deploymentId: selectedDeploymentId
     });
   };
 
@@ -325,6 +344,15 @@ export function LinkDomainDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {deployments.length === 0 && (
+            <Alert>
+              <AlertDescription>
+                Domains can only be linked to deployments. Please create a
+                deployment before linking a domain.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {!provider ? (
             // Provider selection
             <div className="space-y-3">
@@ -337,7 +365,7 @@ export function LinkDomainDialog({
                     setProvider("cloudflare");
                     setError(null);
                   }}
-                  disabled={!isCloudflareConnected}
+                  disabled={!isCloudflareConnected || deployments.length === 0}
                 >
                   <Globe className="w-6 h-6" />
                   <span>Cloudflare</span>
@@ -354,7 +382,11 @@ export function LinkDomainDialog({
                     setProvider("firebase");
                     setError(null);
                   }}
-                  disabled={!project.firebaseProjectId || !isGoogleConnected}
+                  disabled={
+                    !project.firebaseProjectId ||
+                    !isGoogleConnected ||
+                    deployments.length === 0
+                  }
                 >
                   <Flame className="w-6 h-6" />
                   <span>Firebase</span>
@@ -486,6 +518,34 @@ export function LinkDomainDialog({
           ) : (
             // Firebase form
             <>
+              {deployments.length > 0 && (
+                <div>
+                  <Label htmlFor="deployment-select-firebase">
+                    Deployment *
+                  </Label>
+                  <Select
+                    value={selectedDeploymentId}
+                    onValueChange={(value) => {
+                      setSelectedDeploymentId(value);
+                      setError(null);
+                    }}
+                  >
+                    <SelectTrigger
+                      id="deployment-select-firebase"
+                      className="mt-2"
+                    >
+                      <SelectValue placeholder="Select a deployment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deployments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="site-select">Hosting Site</Label>
                 {loadingFirebaseSites ? (
@@ -607,7 +667,8 @@ export function LinkDomainDialog({
               disabled={
                 addFirebaseDomainMutation.isPending ||
                 !selectedSiteId ||
-                !firebaseDomainName.trim()
+                !firebaseDomainName.trim() ||
+                (deployments.length > 0 && !selectedDeploymentId)
               }
             >
               {addFirebaseDomainMutation.isPending && (

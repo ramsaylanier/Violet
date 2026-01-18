@@ -274,7 +274,7 @@ export function LinkCustomDomainDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Link Custom Domain</DialogTitle>
           <DialogDescription>

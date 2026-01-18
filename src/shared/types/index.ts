@@ -215,7 +215,12 @@ export interface GitHubWorkflow {
   node_id: string;
   name: string;
   path: string;
-  state: "active" | "deleted" | "disabled_fork" | "disabled_inactivity" | "disabled_manually";
+  state:
+    | "active"
+    | "deleted"
+    | "disabled_fork"
+    | "disabled_inactivity"
+    | "disabled_manually";
   created_at: string;
   updated_at: string;
   url: string;
@@ -237,7 +242,15 @@ export interface GitHubWorkflowRun {
   name: string;
   display_title?: string;
   status: "queued" | "in_progress" | "completed";
-  conclusion: "success" | "failure" | "neutral" | "cancelled" | "skipped" | "timed_out" | "action_required" | null;
+  conclusion:
+    | "success"
+    | "failure"
+    | "neutral"
+    | "cancelled"
+    | "skipped"
+    | "timed_out"
+    | "action_required"
+    | null;
   workflow_id: number;
   head_branch: string | null;
   head_sha: string;

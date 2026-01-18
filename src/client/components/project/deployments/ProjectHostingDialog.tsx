@@ -37,6 +37,7 @@ import {
   listCloudflarePagesProjects,
   createCloudflarePagesProject
 } from "@/client/api/cloudflare";
+import { setupFirebaseHosting } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 
 interface ProjectHostingDialogProps {
@@ -113,6 +114,13 @@ export function ProjectHostingDialog({
       production_branch?: string;
     }) => {
       return createCloudflarePagesProject(data);
+    }
+  });
+
+  // Mutation for setting up Firebase Hosting
+  const setupFirebaseHostingMutation = useMutation({
+    mutationFn: async (data: { projectId: string; siteId?: string }) => {
+      return setupFirebaseHosting(data);
     }
   });
 
@@ -261,15 +269,39 @@ export function ProjectHostingDialog({
         return;
       }
 
-      const newHosting: Hosting = {
-        id: `fb-${project.firebaseProjectId}`,
-        provider: "firebase-hosting",
-        name: project.firebaseProjectId,
-        url: `https://${project.firebaseProjectId}.web.app`,
-        status: "active",
-        linkedAt: new Date()
-      };
-      addHostingMutation.mutate(newHosting);
+      // First, setup Firebase Hosting in Firebase
+      const firebaseProjectId = project.firebaseProjectId;
+      if (!firebaseProjectId) {
+        setError("Firebase project ID is missing");
+        return;
+      }
+
+      setupFirebaseHostingMutation.mutate(
+        {
+          projectId: firebaseProjectId
+        },
+        {
+          onSuccess: () => {
+            // After hosting is set up, add it to the deployment
+            const newHosting: Hosting = {
+              id: `fb-${firebaseProjectId}`,
+              provider: "firebase-hosting",
+              name: firebaseProjectId,
+              url: `https://${firebaseProjectId}.web.app`,
+              status: "active",
+              linkedAt: new Date()
+            };
+            addHostingMutation.mutate(newHosting);
+          },
+          onError: (err: any) => {
+            console.error("Failed to setup Firebase Hosting:", err);
+            setError(
+              err?.message ||
+                "Failed to setup Firebase Hosting. Please try again."
+            );
+          }
+        }
+      );
     }
   };
 
@@ -309,13 +341,14 @@ export function ProjectHostingDialog({
     isLoadingAccountId ||
     loadingPagesProjects ||
     createPagesProjectMutation.isPending ||
+    setupFirebaseHostingMutation.isPending ||
     addHostingMutation.isPending ||
     removeHostingMutation.isPending;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {hasHosting ? "Manage Hosting" : "Add Hosting"}

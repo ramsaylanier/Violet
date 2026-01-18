@@ -84,6 +84,8 @@ export async function apiRequest<T>(
           }
         }
 
+        console.log(error);
+
         throw new Error(
           error.message || `HTTP error! status: ${retryResponse.status}`
         );
@@ -128,7 +130,7 @@ export async function apiRequest<T>(
       }
     }
 
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    throw new Error(error.message || error.error);
   }
 
   return response.json();

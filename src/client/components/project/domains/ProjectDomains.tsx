@@ -146,13 +146,33 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
 
   const removeDomainMutation = useMutation({
     mutationFn: async (zoneToRemove: { zoneId: string; zoneName: string }) => {
-      const updatedDomains = projectDomains.filter(
-        (d) =>
-          (d.provider === "cloudflare" && d.zoneId !== zoneToRemove.zoneId) ||
-          (d.provider === "firebase" && d.zoneName !== zoneToRemove.zoneName)
-      );
+      // Find the deployment that has this domain and remove it
+      const updatedDeployments = deployments.map((d) => {
+        if (!d.domain) return d;
+
+        // Match Cloudflare domains by zoneId
+        const isCloudflareMatch =
+          d.domain.provider === "cloudflare" &&
+          d.domain.zoneId === zoneToRemove.zoneId;
+
+        // Match Firebase domains by zoneName
+        const isFirebaseMatch =
+          d.domain.provider === "firebase" &&
+          d.domain.zoneName === zoneToRemove.zoneName;
+
+        if (isCloudflareMatch || isFirebaseMatch) {
+          return {
+            ...d,
+            domain: undefined,
+            updatedAt: new Date()
+          };
+        }
+
+        return d;
+      });
+
       return await updateProject(project.id, {
-        domains: updatedDomains.length > 0 ? updatedDomains : []
+        deployments: updatedDeployments
       });
     },
     onSuccess: (updatedProject) => {
