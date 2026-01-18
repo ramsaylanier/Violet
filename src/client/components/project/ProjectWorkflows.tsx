@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Play,
   Loader2,
@@ -44,13 +44,13 @@ import type {
   GitHubWorkflowRun
 } from "@/shared/types";
 import {
-  listGitHubWorkflowDefinitions,
   getGitHubWorkflowDefinition,
-  dispatchGitHubWorkflow,
-  listGitHubWorkflowRuns,
-  listGitHubBranches
+  dispatchGitHubWorkflow
 } from "@/client/api/github";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useGitHubWorkflows } from "@/client/hooks/useGitHubWorkflows";
+import { useGitHubWorkflowRuns } from "@/client/hooks/useGitHubWorkflowRuns";
+import { useGitHubBranches } from "@/client/hooks/useGitHubBranches";
 
 interface ProjectWorkflowsProps {
   owner: string;
@@ -77,25 +77,14 @@ function WorkflowItem({
   const [runsOpen, setRunsOpen] = useState(false);
   const isGitHubConnected = !!user?.githubToken;
 
-  const runsQuery = useQuery({
-    queryKey: ["github-workflow-runs", owner, repo, workflow.id],
-    queryFn: () =>
-      listGitHubWorkflowRuns(owner, repo, {
-        workflowId: workflow.id.toString(),
-        per_page: 5
-      }),
-    enabled: isGitHubConnected && runsOpen,
-    refetchInterval: (query) => {
-      // Poll for in-progress runs
-      const runs = query.state.data || [];
-      const hasInProgress = runs.some(
-        (run) => run.status === "queued" || run.status === "in_progress"
-      );
-      return hasInProgress ? 5000 : false;
-    }
-  });
+  const runsQuery = useGitHubWorkflowRuns(
+    owner,
+    repo,
+    workflow.id,
+    isGitHubConnected && runsOpen
+  );
 
-  const runs = runsQuery?.data || [];
+  const runs = runsQuery.data || [];
   const latestRun = runs[0];
 
   const getStatusBadge = (run: GitHubWorkflowRun) => {
@@ -320,18 +309,14 @@ export function ProjectWorkflows({
     data: workflows = [],
     isLoading: loadingWorkflows,
     error: workflowsError
-  } = useQuery({
-    queryKey: ["github-workflows", owner, repo],
-    queryFn: () => listGitHubWorkflowDefinitions(owner, repo),
-    enabled: isGitHubConnected && workflowsOpen
-  });
+  } = useGitHubWorkflows(owner, repo, isGitHubConnected && workflowsOpen);
 
   // Fetch branches for branch selector
-  const { data: branches = [] } = useQuery({
-    queryKey: ["github-branches", owner, repo],
-    queryFn: () => listGitHubBranches(owner, repo),
-    enabled: isGitHubConnected && runDialogOpen
-  });
+  const { data: branches = [] } = useGitHubBranches(
+    owner,
+    repo,
+    isGitHubConnected && runDialogOpen
+  );
 
   // Fetch workflow runs for each workflow
   // We'll fetch runs individually when needed instead of using hooks in a map

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2, ExternalLink, Flame, Settings } from "lucide-react";
 import { Button } from "@/client/components/ui/button";
 import {
@@ -32,11 +32,9 @@ import { Input } from "@/client/components/ui/input";
 import { Badge } from "@/client/components/ui/badge";
 import type { Project, Deployment, Hosting } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import {
-  getCloudflareAccountId,
-  listCloudflarePagesProjects,
-  createCloudflarePagesProject
-} from "@/client/api/cloudflare";
+import { useCloudflareAccountId } from "@/client/hooks/useCloudflareAccountId";
+import { useCloudflarePagesProjects } from "@/client/hooks/useCloudflarePagesProjects";
+import { createCloudflarePagesProject } from "@/client/api/cloudflare";
 import { setupFirebaseHosting } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 
@@ -76,35 +74,25 @@ export function ProjectHostingDialog({
   const hasHosting = deployment.hosting && deployment.hosting.length > 0;
 
   // Query for Cloudflare account ID
-  const { data: accountId, isLoading: isLoadingAccountId } = useQuery({
-    queryKey: ["cloudflare-account-id"],
-    queryFn: async () => {
-      const { accountId: id } = await getCloudflareAccountId();
-      return id;
-    },
-    enabled:
+  const { data: accountId, isLoading: isLoadingAccountId } =
+    useCloudflareAccountId(
       open &&
-      !hasHosting &&
-      selectedProvider === "cloudflare-pages" &&
-      isCloudflareConnected
-  });
+        !hasHosting &&
+        selectedProvider === "cloudflare-pages" &&
+        isCloudflareConnected
+    );
 
   // Query for Cloudflare Pages projects
   const { data: availablePagesProjects = [], isLoading: loadingPagesProjects } =
-    useQuery({
-      queryKey: ["cloudflare-pages-projects", accountId],
-      queryFn: async () => {
-        if (!accountId) throw new Error("Account ID required");
-        return listCloudflarePagesProjects(accountId);
-      },
-      enabled:
-        !!accountId &&
+    useCloudflarePagesProjects(
+      accountId,
+      !!accountId &&
         open &&
         !hasHosting &&
         selectedProvider === "cloudflare-pages" &&
         isCloudflareConnected &&
         !isCreateMode
-    });
+    );
 
   // Mutation for creating Cloudflare Pages project
   const createPagesProjectMutation = useMutation({

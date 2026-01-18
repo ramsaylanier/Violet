@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Trash2,
@@ -29,9 +29,9 @@ import {
 } from "@/client/components/ui/alert-dialog";
 import { Badge } from "@/client/components/ui/badge";
 import type { Project, Deployment } from "@/shared/types";
-import { listCloudflareZones } from "@/client/api/cloudflare";
 import { updateProject } from "@/client/api/projects";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useCloudflareZones } from "@/client/hooks/useCloudflareZones";
 
 interface ManageDomainDialogProps {
   project: Project;
@@ -59,16 +59,9 @@ export function ManageDomainDialog({
   const isCloudflareConnected = !!user?.cloudflareToken;
 
   // Fetch Cloudflare zones to get account info for management link
-  const { data: availableZones = [] } = useQuery({
-    queryKey: ["cloudflare-zones"],
-    queryFn: async () => {
-      if (!isCloudflareConnected || !isCloudflareDomain) {
-        return [];
-      }
-      return listCloudflareZones();
-    },
-    enabled: open && isCloudflareConnected && isCloudflareDomain
-  });
+  const { data: availableZones = [] } = useCloudflareZones(
+    open && isCloudflareConnected && isCloudflareDomain
+  );
 
   const zone = isCloudflareDomain
     ? availableZones.find((z) => z.id === domain?.zoneId)

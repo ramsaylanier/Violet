@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
@@ -18,8 +18,8 @@ import {
   CommandList
 } from "@/client/components/ui/command";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
+import { useFirebaseProjects } from "@/client/hooks/useFirebaseProjects";
 import {
-  listFirebaseProjects,
   initiateGoogleOAuth,
   createGoogleCloudProject
 } from "@/client/api/firebase";
@@ -55,24 +55,10 @@ export function FirebaseIntegrationSection({
   const {
     data: availableFirebaseProjects = [],
     isLoading: loadingFirebaseProjects
-  } = useQuery({
-    queryKey: ["firebase-projects"],
-    queryFn: async () => {
-      try {
-        return await listFirebaseProjects();
-      } catch (err: any) {
-        if (
-          err?.message?.includes("Google account not connected") ||
-          err?.message?.includes("needsAuth")
-        ) {
-          return [];
-        }
-        throw err;
-      }
-    },
-    enabled: isGoogleConnected && wizardState.firebaseMode === "select",
-    retry: 1
-  });
+  } = useFirebaseProjects(
+    isGoogleConnected && wizardState.firebaseMode === "select",
+    false
+  );
 
   const handleConnectGoogle = async () => {
     try {

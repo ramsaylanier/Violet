@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Check, ChevronsUpDown, Github } from "lucide-react";
 import {
   DialogContent,
@@ -28,10 +28,8 @@ import {
 import { Badge } from "@/client/components/ui/badge";
 import type { Project, Deployment, GitHubRepository } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import {
-  listGitHubRepositories,
-  createGitHubRepository
-} from "@/client/api/github";
+import { useGitHubRepositories } from "@/client/hooks/useGitHubRepositories";
+import { createGitHubRepository } from "@/client/api/github";
 import { updateProject } from "@/client/api/projects";
 
 // Note: randomUUID is available in Node.js 14.17.0+, but for browser compatibility we'll use a simple UUID generator
@@ -76,12 +74,9 @@ export function CreateDeploymentDialog({
   const [deploymentDescription, setDeploymentDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch repositories using useQuery
-  const { data: availableRepos = [], isLoading: loadingRepos } = useQuery({
-    queryKey: ["github-repositories"],
-    queryFn: listGitHubRepositories,
-    enabled: open && isGitHubConnected && repoMode === "add"
-  });
+  // Fetch repositories
+  const { data: availableRepos = [], isLoading: loadingRepos } =
+    useGitHubRepositories(open && isGitHubConnected && repoMode === "add");
 
   // Create repository mutation
   const createRepoMutation = useMutation({

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   Flame,
@@ -17,7 +16,7 @@ import {
 } from "@/client/components/ui/card";
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import { listGitHubIssuesAggregated } from "@/client/api/github";
+import { useGitHubIssues } from "@/client/hooks/useGitHubIssues";
 import { getProjectRepositories } from "@/client/lib/utils";
 
 interface ProjectOverviewProps {
@@ -31,19 +30,9 @@ export function ProjectOverview({ project }: ProjectOverviewProps) {
   const projectGitHubProjects = project.githubProjects || [];
   const isGitHubConnected = !!user?.githubToken;
 
-  // Fetch issues using useQuery
-  const { data: issues = [], isLoading: loadingIssues } = useQuery({
-    queryKey: ["github-issues", project.id],
-    queryFn: async () => {
-      if (!user?.githubToken || projectRepos.length === 0) {
-        return [];
-      }
-      const repos = projectRepos.map((r) => ({ owner: r.owner, name: r.name }));
-      return await listGitHubIssuesAggregated(repos, "all");
-    },
-    enabled: isGitHubConnected && projectRepos.length > 0,
-    retry: 1
-  });
+  // Fetch issues
+  const { data: issues = [], isLoading: loadingIssues } =
+    useGitHubIssues(project);
 
   const openIssues = useMemo(
     () => issues.filter((i) => i.state === "open"),

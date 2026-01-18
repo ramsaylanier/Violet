@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Check,
@@ -46,15 +46,13 @@ import { Progress } from "@/client/components/ui/progress";
 import { Badge } from "@/client/components/ui/badge";
 import type { Deployment, Hosting, Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import { listGitHubBranches } from "@/client/api/github";
+import { useGitHubBranches } from "@/client/hooks/useGitHubBranches";
+import { useCloudflareAccountId } from "@/client/hooks/useCloudflareAccountId";
+import { useCloudflarePagesProjects } from "@/client/hooks/useCloudflarePagesProjects";
+import { useFirebaseHostingSites } from "@/client/hooks/useFirebaseHostingSites";
 import { deployDeployment } from "@/client/api/deployments";
 import { updateProject } from "@/client/api/projects";
-import {
-  getCloudflareAccountId,
-  listCloudflarePagesProjects,
-  createCloudflarePagesProject
-} from "@/client/api/cloudflare";
-import { listFirebaseHostingSites } from "@/client/api/firebase";
+import { createCloudflarePagesProject } from "@/client/api/cloudflare";
 
 interface DeployDialogProps {
   open: boolean;
@@ -119,64 +117,47 @@ export function DeployDialog({
   }, [open, step, needsHosting, currentDeployment.hosting]);
 
   // Fetch branches
-  const { data: branches = [], isLoading: loadingBranches } = useQuery({
-    queryKey: ["github-branches", repoOwner, repoName],
-    queryFn: () => listGitHubBranches(repoOwner, repoName),
-    enabled:
-      open &&
+  const { data: branches = [], isLoading: loadingBranches } = useGitHubBranches(
+    repoOwner,
+    repoName,
+    open &&
       hasRepository &&
       !!user?.githubToken &&
       step === "branch" &&
       !!repoOwner &&
       !!repoName
-  });
+  );
 
   // Fetch Cloudflare account ID
-  const { data: accountId, isLoading: isLoadingAccountId } = useQuery({
-    queryKey: ["cloudflare-account-id"],
-    queryFn: async () => {
-      const { accountId: id } = await getCloudflareAccountId();
-      return id;
-    },
-    enabled:
+  const { data: accountId, isLoading: isLoadingAccountId } =
+    useCloudflareAccountId(
       open &&
-      (step === "add-hosting" || step === "providers") &&
-      selectedHostingProvider === "cloudflare-pages" &&
-      isCloudflareConnected
-  });
+        (step === "add-hosting" || step === "providers") &&
+        selectedHostingProvider === "cloudflare-pages" &&
+        isCloudflareConnected
+    );
 
   // Fetch Cloudflare Pages projects
   const { data: availablePagesProjects = [], isLoading: loadingPagesProjects } =
-    useQuery({
-      queryKey: ["cloudflare-pages-projects", accountId],
-      queryFn: async () => {
-        if (!accountId) throw new Error("Account ID required");
-        return listCloudflarePagesProjects(accountId);
-      },
-      enabled:
-        !!accountId &&
+    useCloudflarePagesProjects(
+      accountId,
+      !!accountId &&
         open &&
         (step === "add-hosting" || step === "providers") &&
         selectedHostingProvider === "cloudflare-pages" &&
         isCloudflareConnected
-    });
+    );
 
   // Fetch Firebase hosting sites
   const { data: firebaseSites = [], isLoading: loadingFirebaseSites } =
-    useQuery({
-      queryKey: ["firebase-hosting-sites", project.firebaseProjectId],
-      queryFn: () => {
-        if (!project.firebaseProjectId)
-          throw new Error("Firebase project ID required");
-        return listFirebaseHostingSites(project.firebaseProjectId);
-      },
-      enabled:
-        !!project.firebaseProjectId &&
+    useFirebaseHostingSites(
+      project.firebaseProjectId || undefined,
+      !!project.firebaseProjectId &&
         open &&
         (step === "add-hosting" || step === "providers") &&
         selectedHostingProvider === "firebase-hosting" &&
         hasFirebaseProject
-    });
+    );
 
   // Create Cloudflare Pages project mutation
   const createPagesProjectMutation = useMutation({

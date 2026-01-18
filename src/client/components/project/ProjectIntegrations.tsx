@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Flame,
   Plus,
@@ -67,11 +67,11 @@ import {
 } from "@/client/components/ui/alert-dialog";
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useFirebaseProjects } from "@/client/hooks/useFirebaseProjects";
+import { useFirebaseServices } from "@/client/hooks/useFirebaseServices";
 import {
   verifyFirebaseProject,
-  listFirebaseProjects,
-  initiateGoogleOAuth,
-  getFirebaseServicesStatus
+  initiateGoogleOAuth
 } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 
@@ -102,39 +102,20 @@ export function ProjectIntegrations({
     data: servicesStatus,
     isLoading: loadingServices,
     error: servicesError
-  } = useQuery({
-    queryKey: ["firebase-services", project.firebaseProjectId],
-    queryFn: () =>
-      project.firebaseProjectId
-        ? getFirebaseServicesStatus(project.firebaseProjectId)
-        : null,
-    enabled: !!project.firebaseProjectId && isGoogleConnected,
-    retry: 1
-  });
+  } = useFirebaseServices(
+    project.firebaseProjectId || undefined,
+    !!project.firebaseProjectId && isGoogleConnected
+  );
 
-  // Fetch Firebase projects using useQuery
+  // Fetch Firebase projects
   const {
     data: availableProjects = [],
     isLoading: loadingProjects,
     error: projectsError
-  } = useQuery({
-    queryKey: ["firebase-projects"],
-    queryFn: async () => {
-      try {
-        return await listFirebaseProjects();
-      } catch (err: any) {
-        if (
-          err?.message?.includes("Google account not connected") ||
-          err?.message?.includes("needsAuth")
-        ) {
-          throw new Error("needsAuth");
-        }
-        throw err;
-      }
-    },
-    enabled: dialogOpen && dialogMode === "select" && isGoogleConnected,
-    retry: 1
-  });
+  } = useFirebaseProjects(
+    dialogOpen && dialogMode === "select" && isGoogleConnected,
+    true
+  );
 
   const needsAuth =
     projectsError instanceof Error && projectsError.message === "needsAuth";

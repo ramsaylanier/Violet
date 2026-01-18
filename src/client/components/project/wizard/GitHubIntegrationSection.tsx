@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
@@ -19,7 +18,7 @@ import {
   CommandList
 } from "@/client/components/ui/command";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
-import { listGitHubRepositories } from "@/client/api/github";
+import { useGitHubRepositories } from "@/client/hooks/useGitHubRepositories";
 import type { WizardState } from "./ProjectCreationWizard";
 
 interface GitHubIntegrationSectionProps {
@@ -50,19 +49,9 @@ export function GitHubIntegrationSection({
 
   // Fetch GitHub repositories when "link existing" mode is selected
   const { data: availableGithubRepos = [], isLoading: loadingGithubRepos } =
-    useQuery({
-      queryKey: ["github-repositories"],
-      queryFn: async () => {
-        try {
-          return await listGitHubRepositories();
-        } catch (err: any) {
-          console.error("Failed to load GitHub repositories:", err);
-          return [];
-        }
-      },
-      enabled: isGitHubConnected && wizardState.githubMode === "link",
-      retry: 1
-    });
+    useGitHubRepositories(
+      isGitHubConnected && wizardState.githubMode === "link"
+    );
 
   const handleModeChange = (mode: "create" | "link") => {
     if (mode === "link") {

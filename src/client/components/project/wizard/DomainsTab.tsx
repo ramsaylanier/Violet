@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { Globe } from "lucide-react";
 import { Badge } from "@/client/components/ui/badge";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import { listCloudflareZones } from "@/client/api/cloudflare";
+import { useCloudflareZones } from "@/client/hooks/useCloudflareZones";
 import type { WizardState } from "./ProjectCreationWizard";
 
 interface DomainsTabProps {
@@ -17,14 +16,9 @@ export function DomainsTab({ wizardState, onUpdate, open }: DomainsTabProps) {
   const isCloudflareConnected = !!user?.cloudflareToken;
 
   // Fetch Cloudflare zones
-  const { data: availableZones = [] } = useQuery({
-    queryKey: ["cloudflare-zones"],
-    queryFn: async () => {
-      if (!isCloudflareConnected) return [];
-      return listCloudflareZones();
-    },
-    enabled: open && isCloudflareConnected
-  });
+  const { data: availableZones = [] } = useCloudflareZones(
+    open && isCloudflareConnected
+  );
 
   const handleDomainToggle = (zoneId: string, zoneName: string) => {
     const isSelected = wizardState.selectedDomains.some(

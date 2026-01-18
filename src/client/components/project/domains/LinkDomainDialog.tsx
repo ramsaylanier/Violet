@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   ExternalLink,
@@ -43,11 +43,9 @@ import { Input } from "@/client/components/ui/input";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import type { Project, Deployment } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import { listCloudflareZones } from "@/client/api/cloudflare";
-import {
-  listFirebaseHostingSites,
-  addFirebaseDomain
-} from "@/client/api/firebase";
+import { useCloudflareZones } from "@/client/hooks/useCloudflareZones";
+import { useFirebaseHostingSites } from "@/client/hooks/useFirebaseHostingSites";
+import { addFirebaseDomain } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 import { getProjectDomains } from "@/client/lib/utils";
 
@@ -96,33 +94,20 @@ export function LinkDomainDialog({
   const isGoogleConnected = !!user?.googleToken;
 
   // Fetch Cloudflare zones
-  const { data: availableZones = [], isLoading: loadingZones } = useQuery({
-    queryKey: ["cloudflare-zones"],
-    queryFn: async () => {
-      if (!isCloudflareConnected) {
-        return [];
-      }
-      return listCloudflareZones();
-    },
-    enabled: open && provider === "cloudflare" && isCloudflareConnected
-  });
+  const { data: availableZones = [], isLoading: loadingZones } =
+    useCloudflareZones(
+      open && provider === "cloudflare" && isCloudflareConnected
+    );
 
   // Fetch Firebase hosting sites
   const { data: firebaseSites = [], isLoading: loadingFirebaseSites } =
-    useQuery({
-      queryKey: ["firebase-hosting-sites", project.firebaseProjectId],
-      queryFn: async () => {
-        if (!project.firebaseProjectId || !isGoogleConnected) {
-          return [];
-        }
-        return listFirebaseHostingSites(project.firebaseProjectId);
-      },
-      enabled:
-        open &&
+    useFirebaseHostingSites(
+      project.firebaseProjectId || undefined,
+      open &&
         provider === "firebase" &&
         !!project.firebaseProjectId &&
         isGoogleConnected
-    });
+    );
 
   // Filter out already linked domains
   const availableZonesToAdd =

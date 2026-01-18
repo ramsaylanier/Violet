@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
   Combobox,
   ComboboxInput,
@@ -10,7 +9,7 @@ import {
   ComboboxEmpty,
   ComboboxSeparator
 } from "@/client/components/ui/combobox";
-import { listProjects } from "@/client/api/projects";
+import { useProjects } from "@/client/hooks/useProjects";
 import { useAuth } from "@/client/contexts/AuthContext";
 import { Plus } from "lucide-react";
 
@@ -32,11 +31,7 @@ export function ProjectSelect({
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
-    enabled: isAuthenticated
-  });
+  const { data: projects = [], isLoading } = useProjects(isAuthenticated);
 
   const handleSelect = (selectedValue: string | null) => {
     if (!selectedValue) return;

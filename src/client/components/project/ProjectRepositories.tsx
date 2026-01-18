@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -64,9 +64,9 @@ import {
 } from "@/client/components/ui/alert-dialog";
 import type { Project, GitHubRepository, GitHubIssue } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useGitHubRepositories } from "@/client/hooks/useGitHubRepositories";
 import { getProjectRepositories } from "@/client/lib/utils";
 import {
-  listGitHubRepositories,
   createGitHubRepository,
   deleteGitHubRepository,
   listGitHubIssues
@@ -97,9 +97,7 @@ export function ProjectRepositories({
   onUpdate
 }: ProjectRepositoriesProps) {
   const queryClient = useQueryClient();
-  const [availableRepos, setAvailableRepos] = useState<GitHubRepository[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingRepos, setLoadingRepos] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "create">("add");
@@ -120,24 +118,9 @@ export function ProjectRepositories({
   const projectRepos = getProjectRepositories(project);
   const isGitHubConnected = !!user?.githubToken;
 
-  const loadRepositories = async () => {
-    try {
-      setLoadingRepos(true);
-      const repos = await listGitHubRepositories();
-      setAvailableRepos(repos);
-    } catch (err: any) {
-      console.error("Failed to load repositories:", err);
-      setError(err?.message || "Failed to load repositories");
-    } finally {
-      setLoadingRepos(false);
-    }
-  };
-
-  useEffect(() => {
-    if (dialogOpen && dialogMode === "add") {
-      loadRepositories();
-    }
-  }, [dialogOpen, dialogMode]);
+  // Fetch GitHub repositories when dialog is open in "add" mode
+  const { data: availableRepos = [], isLoading: loadingRepos } =
+    useGitHubRepositories(dialogOpen && dialogMode === "add" && isGitHubConnected);
 
   const loadRepoIssues = async (repo: Repository, fullName: string) => {
     if (!user?.githubToken || repoIssues[fullName]?.loading) return;

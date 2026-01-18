@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -24,12 +24,12 @@ import { Label } from "@/client/components/ui/label";
 import { Textarea } from "@/client/components/ui/textarea";
 import type { Project, GitHubIssue, GitHubIssueComment } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useGitHubIssues } from "@/client/hooks/useGitHubIssues";
 import { GitHubNotConnectedState } from "@/client/components/shared/GitHubNotConnectedState";
 import { NoRepositoriesState } from "@/client/components/shared/NoRepositoriesState";
 import { LoadingState } from "@/client/components/shared/LoadingState";
 import { EmptyState } from "@/client/components/shared/EmptyState";
 import {
-  listGitHubIssuesAggregated,
   closeGitHubIssue,
   reopenGitHubIssue,
   addGitHubIssueComment,
@@ -77,23 +77,12 @@ export function ProjectIssues({ project }: ProjectIssuesProps) {
 
   const isGitHubConnected = !!user?.githubToken;
 
-  // Fetch issues using useQuery
+  // Fetch issues
   const {
     data: issues = [],
     isLoading: loading,
     error: queryError
-  } = useQuery({
-    queryKey: ["github-issues", project.id],
-    queryFn: async () => {
-      if (!user?.githubToken || projectRepos.length === 0) {
-        return [];
-      }
-      const repos = projectRepos.map((r) => ({ owner: r.owner, name: r.name }));
-      return await listGitHubIssuesAggregated(repos, "all");
-    },
-    enabled: isGitHubConnected && projectRepos.length > 0,
-    retry: 1
-  });
+  } = useGitHubIssues(project);
 
   // Filter issues based on current filters
   const filteredIssues = useMemo(() => {

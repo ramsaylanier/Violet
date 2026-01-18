@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -9,7 +8,7 @@ import {
 } from "@/client/components/ui/card";
 import { Button } from "@/client/components/ui/button";
 
-import { listProjects } from "@/client/api/projects";
+import { useProjects } from "@/client/hooks/useProjects";
 import { useAuth } from "@/client/contexts/AuthContext";
 import { Plus, Github, Flame } from "lucide-react";
 import { getProjectRepositories } from "@/client/lib/utils";
@@ -21,11 +20,7 @@ export function ProjectList() {
     data: projects = [],
     isLoading,
     error
-  } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
-    enabled: isAuthenticated
-  });
+  } = useProjects(isAuthenticated);
 
   if (isLoading) {
     return (

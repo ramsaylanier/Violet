@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Trash2,
@@ -36,10 +36,8 @@ import {
 import { Badge } from "@/client/components/ui/badge";
 import type { Project, CloudflareDNSRecord } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import {
-  listCloudflareZones,
-  listCloudflareDNSRecords
-} from "@/client/api/cloudflare";
+import { useCloudflareZones } from "@/client/hooks/useCloudflareZones";
+import { listCloudflareDNSRecords } from "@/client/api/cloudflare";
 import { updateProject } from "@/client/api/projects";
 import { getProjectDomains } from "@/client/lib/utils";
 import { EmptyState } from "@/client/components/shared/EmptyState";
@@ -82,17 +80,10 @@ export function ProjectDomains({ project, onUpdate }: ProjectDomainsProps) {
   const projectDomains = getProjectDomains(project); // Legacy support
   const isCloudflareConnected = !!user?.cloudflareToken;
 
-  // Fetch Cloudflare zones using useQuery
-  const { data: availableZones = [] } = useQuery({
-    queryKey: ["cloudflare-zones"],
-    queryFn: async () => {
-      if (!isCloudflareConnected) {
-        return [];
-      }
-      return listCloudflareZones();
-    },
-    enabled: isCloudflareConnected
-  });
+  // Fetch Cloudflare zones
+  const { data: availableZones = [] } = useCloudflareZones(
+    isCloudflareConnected
+  );
 
   const loadDNSRecords = async (zoneId: string, zoneName: string) => {
     if (dnsRecords[zoneId]?.loading) return;

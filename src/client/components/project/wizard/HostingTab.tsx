@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Flame, Globe } from "lucide-react";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
@@ -13,10 +12,8 @@ import {
 } from "@/client/components/ui/select";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
-import {
-  getCloudflareAccountId,
-  listCloudflarePagesProjects
-} from "@/client/api/cloudflare";
+import { useCloudflareAccountId } from "@/client/hooks/useCloudflareAccountId";
+import { useCloudflarePagesProjects } from "@/client/hooks/useCloudflarePagesProjects";
 import type { WizardState } from "./ProjectCreationWizard";
 
 interface HostingTabProps {
@@ -30,29 +27,19 @@ export function HostingTab({ wizardState, onUpdate, open }: HostingTabProps) {
   const isCloudflareConnected = !!user?.cloudflareToken;
 
   // Fetch Cloudflare account ID
-  const { data: cloudflareAccountId } = useQuery({
-    queryKey: ["cloudflare-account-id"],
-    queryFn: async () => {
-      const { accountId } = await getCloudflareAccountId();
-      return accountId;
-    },
-    enabled: open && wizardState.enableCloudflarePages && isCloudflareConnected
-  });
+  const { data: cloudflareAccountId } = useCloudflareAccountId(
+    open && wizardState.enableCloudflarePages && isCloudflareConnected
+  );
 
   // Fetch Cloudflare Pages projects
-  const { data: availablePagesProjects = [] } = useQuery({
-    queryKey: ["cloudflare-pages-projects", cloudflareAccountId],
-    queryFn: async () => {
-      if (!cloudflareAccountId) throw new Error("Account ID required");
-      return listCloudflarePagesProjects(cloudflareAccountId);
-    },
-    enabled:
-      !!cloudflareAccountId &&
+  const { data: availablePagesProjects = [] } = useCloudflarePagesProjects(
+    cloudflareAccountId,
+    !!cloudflareAccountId &&
       open &&
       wizardState.enableCloudflarePages &&
       wizardState.cloudflarePagesConfig?.linkExisting &&
       isCloudflareConnected
-  });
+  );
 
   return (
     <div className="space-y-6">

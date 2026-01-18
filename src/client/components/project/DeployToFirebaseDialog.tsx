@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Flame, Github, GitBranch } from "lucide-react";
 import {
   Dialog,
@@ -22,12 +22,10 @@ import {
 import { Badge } from "@/client/components/ui/badge";
 import type { Project } from "@/shared/types";
 import { useCurrentUser } from "@/client/hooks/useCurrentUser";
+import { useFirebaseProjects } from "@/client/hooks/useFirebaseProjects";
+import { useFirebaseHostingSites } from "@/client/hooks/useFirebaseHostingSites";
 import { getProjectRepositories, getProjectHosting } from "@/client/lib/utils";
-import {
-  listFirebaseProjects,
-  listFirebaseHostingSites,
-  deployToFirebaseHosting
-} from "@/client/api/firebase";
+import { deployToFirebaseHosting } from "@/client/api/firebase";
 import { updateProject } from "@/client/api/projects";
 
 interface DeployToFirebaseDialogProps {
@@ -62,18 +60,15 @@ export function DeployToFirebaseDialog({
   const deploymentsWithRepos = deployments.filter((d) => d.repository);
 
   // Query Firebase projects
-  const { data: firebaseProjects = [], isLoading: loadingProjects } = useQuery({
-    queryKey: ["firebase-projects"],
-    queryFn: listFirebaseProjects,
-    enabled: open && hasGoogleToken
-  });
+  const { data: firebaseProjects = [], isLoading: loadingProjects } =
+    useFirebaseProjects(open && hasGoogleToken, false);
 
   // Query hosting sites for selected Firebase project
-  const { data: hostingSites = [], isLoading: loadingSites } = useQuery({
-    queryKey: ["firebase-hosting-sites", selectedFirebaseProject],
-    queryFn: () => listFirebaseHostingSites(selectedFirebaseProject),
-    enabled: open && !!selectedFirebaseProject && hasGoogleToken
-  });
+  const { data: hostingSites = [], isLoading: loadingSites } =
+    useFirebaseHostingSites(
+      selectedFirebaseProject || undefined,
+      open && !!selectedFirebaseProject && hasGoogleToken
+    );
 
   // Deployment mutation
   const deployMutation = useMutation({
