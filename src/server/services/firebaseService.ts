@@ -7,6 +7,7 @@ import {
 
 // Note: Firebase Admin SDK project creation requires billing-enabled projects
 // This service handles Firestore, Storage, and Hosting setup for existing projects
+// Also handles Google Cloud project creation via Resource Manager API
 
 export async function initializeFirestore(
   _projectId: string,
@@ -339,4 +340,166 @@ export async function getFirebaseServicesStatus(
   }
 
   return status;
+}
+
+/**
+ * Create a new Google Cloud project using the Resource Manager API
+ * Then adds Firebase to the project
+ * Requires Google OAuth token with cloud-platform scope
+ */
+export async function createGoogleCloudProject(
+  userId: string,
+  projectId: string,
+  displayName?: string
+): Promise<FirebaseProject> {
+  try {
+    // Step 1: Create Google Cloud project using Resource Manager API
+    const createProjectResponse = await fetchWithTokenRefresh(
+      userId,
+      "https://cloudresourcemanager.googleapis.com/v1/projects",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          projectId,
+          name: displayName || projectId
+        })
+      }
+    );
+
+    if (!createProjectResponse.ok) {
+      const errorData = await createProjectResponse.json().catch(() => ({}));
+      console.error("Google Cloud Resource Manager API error:", {
+        status: createProjectResponse.status,
+        statusText: createProjectResponse.statusText,
+        errorData
+      });
+
+      // Extract error message from Google Cloud API response
+      // Format: { error: { message: "...", status: "...", code: ... } }
+      const errorMessage =
+        errorData.error?.message ||
+        errorData.message ||
+        `Failed to create Google Cloud project: ${createProjectResponse.statusText}`;
+
+      if (
+        createProjectResponse.status === 401 ||
+        createProjectResponse.status === 403
+      ) {
+        throw new AuthenticationError(
+          errorMessage,
+          createProjectResponse.status,
+          true
+        );
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const createdProject = await createProjectResponse.json();
+
+    // Project creation is asynchronous - wait for it to be ready
+    // Poll the project until it's ACTIVE
+    let projectReady = false;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 attempts = ~2.5 minutes max wait
+
+    while (!projectReady && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds between checks
+
+      const checkResponse = await fetchWithTokenRefresh(
+        userId,
+        `https://cloudresourcemanager.googleapis.com/v1/projects/${projectId}`,
+        {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (checkResponse.ok) {
+        const project = await checkResponse.json();
+        if (project.lifecycleState === "ACTIVE") {
+          projectReady = true;
+        }
+      }
+
+      attempts++;
+    }
+
+    if (!projectReady) {
+      throw new Error(
+        "Project creation timed out. The project may still be initializing."
+      );
+    }
+
+    // Step 2: Add Firebase to the project using Firebase Management API
+    const addFirebaseResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://firebase.googleapis.com/v1beta1/projects/${projectId}:addFirebase`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (!addFirebaseResponse.ok) {
+      const errorData = await addFirebaseResponse.json().catch(() => ({}));
+      console.error("Firebase Management API error:", {
+        status: addFirebaseResponse.status,
+        statusText: addFirebaseResponse.statusText,
+        errorData
+      });
+
+      // If adding Firebase fails, the project still exists but might not have Firebase
+      // We can still return the project info
+      if (addFirebaseResponse.status !== 409) {
+        // 409 means Firebase is already added
+        const errorMessage =
+          errorData.error?.message ||
+          errorData.message ||
+          `Failed to add Firebase to project: ${addFirebaseResponse.statusText}`;
+        throw new Error(errorMessage);
+      }
+    }
+
+    // Step 3: Return the Firebase project metadata
+    const firebaseProjectResponse = await fetchWithTokenRefresh(
+      userId,
+      `https://firebase.googleapis.com/v1beta1/projects/${projectId}`,
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (!firebaseProjectResponse.ok) {
+      // If we can't get Firebase metadata, return basic info from created project
+      return {
+        projectId: createdProject.projectId || projectId,
+        projectNumber: createdProject.projectNumber,
+        displayName: createdProject.name || displayName || projectId,
+        name: `projects/${createdProject.projectId || projectId}`
+      } as FirebaseProject;
+    }
+
+    const firebaseProject = await firebaseProjectResponse.json();
+
+    return {
+      projectId: firebaseProject.projectId || projectId,
+      projectNumber:
+        firebaseProject.projectNumber || createdProject.projectNumber,
+      displayName: firebaseProject.displayName || displayName || projectId,
+      name: firebaseProject.name || `projects/${projectId}`,
+      resources: firebaseProject.resources
+    } as FirebaseProject;
+  } catch (error) {
+    console.error("Error creating Google Cloud project:", error);
+    throw error;
+  }
 }

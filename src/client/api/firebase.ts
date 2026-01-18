@@ -49,6 +49,16 @@ export async function listFirebaseProjects(): Promise<FirebaseProject[]> {
 }
 
 /**
+ * Create a new Google Cloud project and add Firebase to it
+ */
+export async function createGoogleCloudProject(input: {
+  projectId: string;
+  displayName?: string;
+}): Promise<FirebaseProject> {
+  return apiPost<FirebaseProject>("/firebase/projects", input);
+}
+
+/**
  * Initialize Firestore database
  */
 export async function initializeFirestoreDB(input: {

@@ -132,7 +132,7 @@ export function ManageDomainDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Manage Domain</DialogTitle>
             <DialogDescription>

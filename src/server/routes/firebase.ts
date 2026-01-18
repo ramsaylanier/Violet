@@ -14,7 +14,9 @@ import {
   verifyFirebaseProject,
   listFirebaseProjects,
   getFirebaseProjectMetadata,
-  getFirebaseServicesStatus
+  getFirebaseServicesStatus,
+  createGoogleCloudProject,
+  validateFirebaseProjectId
 } from "@/server/services/firebaseService";
 
 import {
@@ -223,6 +225,57 @@ router.post("/projects/:projectId/verify", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
     console.error("Error verifying Firebase project:", error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error"
+    });
+  }
+});
+
+/**
+ * POST /api/firebase/projects
+ * Create a new Google Cloud project and add Firebase to it
+ */
+router.post("/projects", async (req, res) => {
+  try {
+    const userId = await getRequireAuth(req);
+    const { projectId, displayName } = req.body as {
+      projectId: string;
+      displayName?: string;
+    };
+
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    const userProfile = await getUserProfile(userId);
+
+    if (!userProfile || !userProfile.googleToken) {
+      return res.status(401).json({
+        error: "Google account not connected",
+        needsAuth: true
+      });
+    }
+
+    // Validate project ID format
+    if (!validateFirebaseProjectId(projectId)) {
+      return res.status(400).json({
+        error:
+          "Invalid project ID format. Project IDs must be 6-30 characters, start with a letter, and contain only lowercase letters, numbers, and hyphens."
+      });
+    }
+
+    const project = await createGoogleCloudProject(
+      userId,
+      projectId,
+      displayName
+    );
+
+    res.json(project);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.error("Error creating Google Cloud project:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Internal server error"
     });
